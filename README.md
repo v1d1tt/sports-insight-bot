@@ -100,3 +100,5 @@ Interests: FullStack Development, AI/ML, Systems Programming
 
 Acknowledgements
 This project is built for learning, experimentation, and evaluation purposes, and demonstrates real-world integration of AI, backend APIs, and frontend deployment.
+
+soon to be updated
