@@ -1,0 +1,25 @@
+[project]
+name = "sports-insight-api"
+version = "0.1.0"
+description = "The API of Sports Insight Bot (FastAPI on Vercel)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[standard]>=0.165.0",
+    "pydantic-settings>=2.16.3",
+]
+
+[tool.fastapi]
+entrypoint = "app.main:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "ruff>=0.17.6",
+]

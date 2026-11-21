@@ -1,108 +1,119 @@
-Sports Insight Bot
-Sports Insight Bot is a full-stack AI-powered sports analysis chatbot that provides tactical insights, match analysis, and image-based sports discussions through an interactive conversational interface.
+# Sports Insight Bot
 
-> **Status (Nov 2026): being rebuilt.** The old version below no longer works: its model has no providers left on OpenRouter, and all visitors shared one conversation. The rebuild is a cricket-first, multimodal Analyst with an interactive cricket Ground (Svelte 5 + FastAPI on Vercel, model `google/gemma-4-26b-a4b-it`).
-> - Plan: [PRD (#1)](https://github.com/v1d1tt/sports-insight-bot/issues/1) and `docs/PRD.md`, built in 10 vertical-slice tickets (#2–#11)
-> - Model choice: `docs/model-eval/` (6 small vision models tested)
-> - Domain terms: `GLOSSARY.md`; decisions: `docs/adr/`
->
-> The sections below describe the old version and will be replaced in slice 01.
+A cricket-first sports Analyst you chat with. You ask about a match, a tactic or a screenshot, and the Analyst explains it. For cricket it will also draw its answer on an interactive Ground (field placements and wagon wheels).
 
-Project Overview
-Sports Insight Bot is a full-stack AI-powered sports analysis chatbot that provides tactical insights, match analysis, and image-based sports discussions through an interactive conversational interface.
+**Status (Nov 2026): rebuild in progress.** The app is being rebuilt in 10 vertical slices. Slice 01, the walking skeleton, is done: the page asks the API for its health and shows **"Analyst online"** with the model ID. The chat arrives in slice 02.
 
-Tech Stack:
+**Live:** https://sports-insight-bot.vercel.app
 
-Backend
-Python
-FastAPI
-OpenRouter (OpenAI-compatible API)
-Multimodal Vision Language Model (Qwen 2.5 VL)
+The old version (vanilla HTML/JS and a FastAPI server, deployed from two other repos) stopped working when its model lost all providers on OpenRouter. This repo replaces it.
 
-Handles:
-Text-based chat
-Image-to-text sports context extraction
-Tactical analysis responses
-Deployed on Render
+## What works now
 
-Frontend
-HTML
-CSS
-Vanilla JavaScript
-Glassmorphism-style UI with sports-themed design
-Image upload + chat interface
-Deployed on Vercel
+| Part | What it does |
+|---|---|
+| Web page | Loads, calls `GET /api/health`, shows "Analyst online" + the model ID, or "Analyst offline" if the API fails. |
+| API | `GET /api/health` returns `{"status": "ok", "model": "<model ID>"}`. The model ID comes from the `OPENROUTER_MODEL` environment variable (default `google/gemma-4-26b-a4b-it`). |
+| CI | Every push and pull request runs ruff, pytest, svelte-check, Vitest and Playwright. `main` only accepts pull requests with a green check. |
 
+## Stack
 
-Deployment:
+| Part | Choice | Why |
+|---|---|---|
+| Web page | Svelte 5 + Vite + TypeScript, static build | Small compiled UI, and a framework other than the usual React default. |
+| API | Python 3.12, FastAPI, managed with uv, linted with ruff, tested with pytest | Typed request and response models; uv gives one lockfile and fast installs. |
+| Hosting | Vercel, one project with two Services (`frontend/`, `backend/`) | One URL, no CORS, preview deploys for feedback. See [ADR 0002](docs/adr/0002-vercel-for-both-frontend-and-api.md). |
+| Model | `google/gemma-4-26b-a4b-it` on OpenRouter | Picked by a 6-model test: best text answers, only clean pass on the field JSON task, cheapest. See [docs/model-eval](docs/model-eval/README.md). |
+| Tests | pytest, Vitest + Testing Library, Playwright | One test layer per part: API, component, whole page in a real browser. |
+| Visual feedback | Vercel Toolbar comments (preview deploys), sv-agentation (local dev only) | The owner leaves notes on the running page, and the coding agent reads and fixes them. |
 
-Backend (Render)
-Deployed as a FastAPI Web Service
-Uses uvicorn as the ASGI server
-Environment variables managed securely on Render
-Handles all AI processing and API requests
+## Repo layout
 
-Frontend (Vercel)
-Deployed as a static site
-Communicates with backend via HTTPS API calls
-Provides the complete chatbot user experience
+```
+frontend/                 Svelte 5 + Vite + TypeScript page (static build)
+  src/lib/AnalystStatus.svelte   asks the API for its health
+  e2e/                    Playwright tests
+backend/                  FastAPI API, served under /api
+  app/main.py             routes (GET /api/health)
+  app/config.py           settings from environment variables
+  tests/                  pytest tests
+vercel.json               Vercel Services: /api/* goes to backend, all else to frontend
+.github/workflows/ci.yml  CI: lint and tests on every push and pull request
+docs/                     PRD, ADRs, model test, learning notes
+```
 
- Note:  
-  This monorepo is created for unified code visibility and evaluation purposes.  
-  Production deployments currently use separate repositories for frontend and backend.
+## Run it locally (fresh clone)
 
-MONOREPO STRUCTURE:
+You need [Node.js](https://nodejs.org) 24 or newer and [uv](https://docs.astral.sh/uv/) (uv installs Python 3.12 for you).
 
-sports-insight-bot/
-│
-├── backend/
-│   ├── backend.py           # FastAPI backend
-│   ├── requirements.txt     # Python dependencies
-│   ├── Procfile             # Render deployment config
-│   └── .env                 # Environment variables (not committed)
-│
-├── frontend/
-│   ├── index.html           # Chat UI
-│   ├── style.css            # Styling
-│   └── script.js            # Client-side logic
-│
-├── .gitignore
-└── README.md
+1. Clone the repo:
 
----
+   ```bash
+   git clone https://github.com/v1d1tt/sports-insight-bot.git
+   cd sports-insight-bot
+   ```
 
- Features:
+2. Start the API (terminal 1):
 
-- Conversational chatbot interface
-- Sports-related question answering
-- Clean frontend–backend separation
-- Cloud-based deployment
-- Monorepo architecture for easier evaluation
+   ```bash
+   cd backend
+   cp .env.example .env
+   uv sync
+   uv run --env-file .env fastapi dev
+   ```
 
+   `.env` holds your OpenRouter key (`OPENROUTER_API_KEY`, needed from slice 02) and the model ID. It is git-ignored. The API runs at http://127.0.0.1:8000/api/health.
 
+3. Start the web page (terminal 2):
 
- Startup guide:
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
 
-Backend:
+   Open http://localhost:5173. Vite forwards `/api` requests to the API on port 8000, so the paths are the same as on Vercel.
 
-cd backend
-pip install -r requirements.txt
-uvicorn backend:app --reload
+## Test
 
-Frontend:
+API (from `backend/`):
 
-Static files, no build step: open frontend/index.html in a browser.
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run pytest
+```
 
-Security Notes
-API keys are stored using environment variables
-.env is excluded via .gitignore
-CORS enabled for frontend–backend communication
+Web page (from `frontend/`):
 
-Author:
-Vidit Arora
-Software Engineering Student @ DTU
-Interests: FullStack Development, AI/ML, Systems Programming
+```bash
+npm run check                     # svelte-check and TypeScript
+npm test                          # Vitest component tests
+npx playwright install chromium   # once, downloads the test browser
+npm run test:e2e                  # Playwright: builds the page and tests it in Chromium
+```
 
-Acknowledgements
-This project is built for learning, experimentation, and evaluation purposes, and demonstrates real-world integration of AI, backend APIs, and frontend deployment.
+The Playwright test mocks `/api/health`, so it does not need the API to run. CI runs all of these on every push and pull request ([workflow](.github/workflows/ci.yml)).
 
+## Deploy
+
+Vercel builds from GitHub. Each pull request gets a preview URL, and `main` goes to production. The Vercel project uses Root Directory `.` and Framework Preset `Services`; `vercel.json` defines the two services. Environment variables on Vercel:
+
+- `OPENROUTER_API_KEY`: the OpenRouter key (needed from slice 02).
+- `OPENROUTER_MODEL`: optional; without it the API uses `google/gemma-4-26b-a4b-it`.
+
+## Visual feedback
+
+- **Preview deploys:** open the preview URL from the pull request, then use the Vercel Toolbar's Comment tool. The coding agent reads these comments through the Vercel MCP.
+- **Local dev:** `npm run dev` shows the sv-agentation button (bottom right; press `i` to inspect). Click an element, write a note, then copy the notes as Markdown into the chat. It loads in dev mode only and is not in production builds.
+
+## Docs
+
+- Plan: [PRD](docs/PRD.md) ([issue #1](https://github.com/v1d1tt/sports-insight-bot/issues/1)), built in tickets #2 to #11
+- Domain terms: [GLOSSARY.md](GLOSSARY.md); decisions: [docs/adr](docs/adr)
+- Model choice: [docs/model-eval](docs/model-eval/README.md)
+- How each slice works: [docs/learning](docs/learning)
+
+## Author
+
+Vidit Arora, Software Engineering student at DTU. Interests: full-stack development, AI/ML, systems programming.

@@ -1,0 +1,19 @@
+import { svelte } from '@sveltejs/vite-plugin-svelte'
+import { svelteTesting } from '@testing-library/svelte/vite'
+import { defineConfig } from 'vitest/config'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [svelte(), svelteTesting()],
+  server: {
+    // In dev, send /api requests to the local FastAPI server (same paths as on Vercel).
+    proxy: { '/api': 'http://127.0.0.1:8000' },
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/vitest-setup.ts'],
+    // Only unit and component tests. Playwright owns the e2e/ folder.
+    include: ['src/**/*.test.ts'],
+    unstubGlobals: true,
+  },
+})
