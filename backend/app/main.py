@@ -7,7 +7,7 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from pydantic import BaseModel, Field
 
-from app.analyst import ChatMessage, SportFocus, stream_reply
+from app.analyst import BoardState, ChatMessage, SportFocus, stream_reply
 from app.config import SettingsDep
 from app.input_guard import check_request
 from app.model_provider import ModelProvider
@@ -42,6 +42,8 @@ class ChatRequest(BaseModel):
 
     messages: Annotated[list[ChatMessage], Field(min_length=1)]
     sport_focus: SportFocus = Field(default_factory=SportFocus)
+    # Sent with "Ask the Analyst about this field": the Board as it now stands.
+    board: BoardState | None = None
 
 
 # Vercel refuses request bodies over 4.5 MB with HTTP 413 before our code runs.
@@ -74,6 +76,8 @@ async def chat(
             event=refused.type, data=refused.model_dump(exclude={"type"})
         )
         return
-    events = stream_reply(chat_request.messages, provider, chat_request.sport_focus)
+    events = stream_reply(
+        chat_request.messages, provider, chat_request.sport_focus, chat_request.board
+    )
     async for event in events:
         yield ServerSentEvent(event=event.type, data=event.model_dump(exclude={"type"}))

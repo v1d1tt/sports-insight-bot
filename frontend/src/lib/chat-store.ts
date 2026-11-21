@@ -24,7 +24,10 @@ export interface StoredMessage {
   text: string
   /** Visitor Messages only; already resized by Image prep. */
   images?: MessageImage[]
-  /** Analyst Messages only: the Field placement shown on the Board. */
+  /**
+   * Analyst Messages: the Field placement on the Board (with the Visitor's edits).
+   * Visitor Messages: the Board state they asked the Analyst about.
+   */
   field?: FieldPlacement
   createdAt: number
 }
@@ -45,6 +48,8 @@ export interface ChatStore {
   getMessages(chatId: string): Promise<StoredMessage[]>
   /** Add a Message. The first Visitor Message also becomes the Chat's title. */
   addMessage(chatId: string, role: Role, text: string, extras?: MessageExtras): Promise<StoredMessage>
+  /** Save the Field placement of an Analyst Message after the Visitor changed it on the Board. */
+  setField(messageId: number, field: FieldPlacement): Promise<void>
 }
 
 export const DEFAULT_TITLE = 'New Chat'
@@ -140,7 +145,21 @@ export async function openChatStore(name = 'sports-insight-bot'): Promise<ChatSt
       await tx.done
       return { ...newMessage, id }
     },
+
+    async setField(messageId, field) {
+      const tx = db.transaction('messages', 'readwrite')
+      const message = await tx.store.get(messageId)
+      if (message) await tx.store.put({ ...message, field: plainField(field) })
+      await tx.done
+    },
   }
+}
+
+/** A plain copy of a Field placement: a Svelte state proxy cannot be stored. */
+function plainField(field: FieldPlacement): FieldPlacement {
+  const { format, phase, bowler_type, batter_hand } = field
+  const fielders = field.fielders.map(({ position, x, y }) => ({ position, x, y }))
+  return { format, phase, bowler_type, batter_hand, fielders }
 }
 
 /** The Sport focus of a Chat; cricket for Chats saved before it existed. */

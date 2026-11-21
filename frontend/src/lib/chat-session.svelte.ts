@@ -14,6 +14,10 @@ export type ReplyState =
 
 const IDLE: ReplyState = { status: 'idle' }
 
+/** The Visitor's Message when they press "Ask the Analyst about this field". */
+export const ASK_ABOUT_FIELD = 'What do you think of this field as it stands now?'
+
+
 /** An image attached to the Message being written; the id keys the preview. */
 export type Attachment = { id: string; image: MessageImage }
 
@@ -102,7 +106,18 @@ export class ChatSession {
     this.attachError = null
   }
 
-  async send(text: string) {
+  /** Save the Visitor's edit of the Field placement under an Analyst Message. */
+  async editField(messageId: number, field: FieldPlacement) {
+    this.messages = this.messages.map((m) => (m.id === messageId ? { ...m, field } : m))
+    await (await this.#store).setField(messageId, field)
+  }
+
+  /** "Ask the Analyst about this field": send the Board as it now stands with a question. */
+  async askAboutField(field: FieldPlacement) {
+    await this.send(ASK_ABOUT_FIELD, field)
+  }
+
+  async send(text: string, board?: FieldPlacement) {
     const message = text.trim()
     const images = this.attachments.map((attachment) => attachment.image)
     if ((!message && images.length === 0) || this.busy || this.preparing) return
@@ -113,7 +128,7 @@ export class ChatSession {
       this.currentChatId = chatId
     }
     this.#clearDraftMessage()
-    await store.addMessage(chatId, 'visitor', message, { images })
+    await store.addMessage(chatId, 'visitor', message, { images, field: board })
     this.messages = await store.getMessages(chatId)
     this.chats = await store.listChats()
     await this.#reply(chatId)
@@ -156,7 +171,11 @@ export class ChatSession {
     let text = ''
     let field: FieldPlacement | undefined
     const history = this.messages.map(({ role, text, images }) => ({ role, text, images }))
+    // A question about the Board carries the field as it stood when asked (also on retry).
+    const last = this.messages.at(-1)
+    const board = last?.role === 'visitor' && last.field ? { field: last.field } : undefined
     const result = await streamReply(history, {
+      board,
       signal: stop.signal,
       sportFocus: this.sportFocus,
       onText: (piece) => {

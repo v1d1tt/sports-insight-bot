@@ -19,7 +19,12 @@ from app.events import (
     FieldPlacementEvent,
     TextEvent,
 )
-from app.fielding import SHOW_FIELD_PLACEMENT, read_field_placement
+from app.fielding import (
+    SHOW_FIELD_PLACEMENT,
+    FieldPlacement,
+    check_restrictions,
+    read_field_placement,
+)
 from app.model_provider import (
     ImagePart,
     ModelProvider,
@@ -131,8 +136,46 @@ class AnalystMessage(BaseModel):
 ChatMessage = Annotated[VisitorMessage | AnalystMessage, Field(discriminator="role")]
 
 
+class BoardState(BaseModel):
+    """What the Visitor's Board shows when they ask the Analyst about it."""
+
+    field: FieldPlacement
+
+
+PHASE_NAMES = {
+    "powerplay": "powerplay",
+    "middle": "middle overs",
+    "death": "death overs",
+}
+
+
+def board_text(board: BoardState) -> str:
+    """The Board state as data for the model, put after the Visitor's question."""
+    field = board.field
+    phase = "" if field.format == "Test" else f" {PHASE_NAMES[field.phase]}"
+    fielders = "; ".join(f"{f.position} ({f.x:g}, {f.y:g})" for f in field.fielders)
+    broken = [violation.message for violation in check_restrictions(field)]
+    rules = (
+        "It breaks these Fielding restrictions: " + " ".join(broken)
+        if broken
+        else "It breaks no Fielding restriction."
+    )
+    # json.dumps quotes the bowler type, so it reads as data, not as a rule.
+    return (
+        "[Board state] The Visitor changed the Field placement on the Board and "
+        "asks about it as it now stands. Comment on this exact field: what it "
+        "is good for, its gaps, and what you would change. Do not call "
+        "show_field_placement unless the Visitor asks for a new field.\n"
+        f"{field.format}{phase}, bowler {json.dumps(field.bowler_type)}, to a "
+        f"{field.batter_hand}-handed batter.\n"
+        f"Fielders (x, y): {fielders}.\n{rules}"
+    )
+
+
 def build_prompt(
-    messages: Sequence[ChatMessage], sport_focus: SportFocus
+    messages: Sequence[ChatMessage],
+    sport_focus: SportFocus,
+    board: BoardState | None = None,
 ) -> list[ProviderMessage]:
     system = SYSTEM_PROMPT + "\n" + _sport_focus_rules(sport_focus)
     prompt: list[ProviderMessage] = [{"role": "system", "content": system}]
@@ -143,7 +186,18 @@ def build_prompt(
             prompt.append({"role": "user", "content": message.text})
         else:
             prompt.append({"role": "user", "content": _with_images(message)})
+    if board is not None:
+        _add_board(prompt[-1], board)
     return prompt
+
+
+def _add_board(last: ProviderMessage, board: BoardState) -> None:
+    """Put the Board state after the text of the last Visitor Message."""
+    content = last["content"]
+    if isinstance(content, list):
+        content.append({"type": "text", "text": board_text(board)})
+    else:
+        last["content"] = f"{content}\n\n{board_text(board)}"
 
 
 def _with_images(message: VisitorMessage) -> list[TextPart | ImagePart]:
@@ -223,6 +277,7 @@ async def stream_reply(
     messages: Sequence[ChatMessage],
     provider: ModelProvider,
     sport_focus: SportFocus | None = None,
+    board: BoardState | None = None,
 ) -> AsyncIterator[AnalystEvent]:
     """Stream the Analyst's reply to the last Message.
 
@@ -232,7 +287,7 @@ async def stream_reply(
     fails again, the reply is text only.
     """
     focus = sport_focus or SportFocus()
-    prompt = build_prompt(messages, focus)
+    prompt = build_prompt(messages, focus, board)
     tools: list[Tool] | None = (
         [SHOW_FIELD_PLACEMENT] if focus.sport == "cricket" else None
     )
@@ -272,7 +327,7 @@ async def stream_reply(
                 result = FIELD_REPAIR.format(problems="\n".join(problems))
             else:
                 logger.info("Field placement failed twice: %s", problems)
-                prompt = build_prompt(messages, focus)
+                prompt = build_prompt(messages, focus, board)
                 prompt[0]["content"] += FIELD_FAILED
                 tools = None
                 continue

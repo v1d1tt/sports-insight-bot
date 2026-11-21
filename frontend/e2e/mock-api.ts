@@ -32,7 +32,7 @@ export async function mockApi(page: Page, replies: SseStep[][] = []) {
     const reply = replies.shift() ?? ok('(no reply scripted)')
     return route.fulfill({ contentType: 'text/event-stream', body: sseBody(reply) })
   })
-  return { chatRequests }
+  return { chatRequests, replies }
 }
 
 /**
