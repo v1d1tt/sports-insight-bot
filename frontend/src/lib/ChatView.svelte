@@ -68,10 +68,7 @@
       </p>
     {:else if session.messages.length === 0 && session.reply.status === 'idle'}
       <div class="opening">
-        <p class="lead">Ask about a match, a field or a player.</p>
-        <p class="hint">
-          Cricket comes first; other sports work too. Attach a screenshot and the Analyst reads it.
-        </p>
+        <p class="lead"><span>Ask about a match, a field or a player.</span></p>
         <ul class="suggestions" aria-label="Example questions">
           {#each SUGGESTIONS as suggestion (suggestion)}
             <li>
@@ -451,12 +448,10 @@
     }
   }
 
-  /* Two ruled lines per line of the title; paper behind it so no rule crosses the letters. */
+  /* Two ruled lines per line of the title. Paper sits behind each line of words
+     only, so no rule crosses the letters and the rules run up to the last word. */
   .lead {
-    width: fit-content;
-    margin: 0;
-    padding-right: 0.25rem;
-    background: var(--paper);
+    margin: 0 0 var(--line);
     font-family: var(--font-display);
     font-weight: 800;
     font-size: clamp(2.5rem, 6vw, 3rem);
@@ -467,9 +462,10 @@
     color: var(--pencil);
   }
 
-  .hint {
-    margin: 0 0 var(--line);
-    color: var(--pencil-soft);
+  .lead span {
+    background: var(--paper);
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
 
   .suggestions {

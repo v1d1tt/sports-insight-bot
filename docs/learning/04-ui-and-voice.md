@@ -19,7 +19,7 @@ Before any UI code, the owner got one round of questions with 2-4 options each, 
 | Fonts | **Athletic signage** (recommended), Broadcast one-family, Scoreboard tech, System only | **Big Shoulders Display + Public Sans** | Big Shoulders is condensed like stadium signs and shirt numbers, so labels and numbers feel sporty. Public Sans is a plain, very readable text face for the replies. |
 | Motion | Purposeful (recommended), **Expressive**, Minimal | **Expressive** | More life: the page settles in on load, numbers roll like scoreboard plates, and the title's double rule is drawn again when the Sport changes. All of it turns off with the system's "reduce motion" setting. |
 
-The owner's feedback round on the preview asked for two changes, both done: the Message box now runs to the right edge of the screen, and the "Analyst online" line with the model name is gone from the header.
+The owner's feedback round on the preview asked for two changes, both done: the Message box now runs to the right edge of the screen, the "Analyst online" line with the model name is gone from the header, the help line under the empty-Chat title is removed, and the ruled lines now run right up to the end of each line of the title (paper sits behind each line of words, not behind one box as wide as the longest line).
 
 ### What "Scorer's book" means in the code
 
@@ -40,7 +40,7 @@ A `prefers-color-scheme: dark` block redefines the same variables ("the book at 
 - **Thinking = an over of dot balls.** While the Analyst thinks, six ball boxes fill with pencil dots one by one (CSS `@keyframes` with a delay per box).
 - **Streaming = a pencil tip.** While a reply streams, a blinking 2 px bar follows the last block (`.writing > :last-child::after`).
 - **Tables look like a scorecard**: printed headers in condensed capitals, whole words in cells, and a too-wide table scrolls sideways instead of widening the page.
-- **Empty Chat**: a large title, one line of help and three example questions; a click puts one in the Message box to edit (it does not send).
+- **Empty Chat**: a large title and three example questions; a click puts one in the Message box to edit (it does not send).
 
 ## Voice input
 
