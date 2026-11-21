@@ -1,6 +1,13 @@
 Sports Insight Bot
 Sports Insight Bot is a full-stack AI-powered sports analysis chatbot that provides tactical insights, match analysis, and image-based sports discussions through an interactive conversational interface.
 
+> **Status (Nov 2026): being rebuilt.** The old version below no longer works: its model has no providers left on OpenRouter, and all visitors shared one conversation. The rebuild is a cricket-first, multimodal Analyst with an interactive cricket Ground (Svelte 5 + FastAPI on Vercel, model `google/gemma-4-26b-a4b-it`).
+> - Plan: [PRD (#1)](https://github.com/v1d1tt/sports-insight-bot/issues/1) and `docs/PRD.md`, built in 10 vertical-slice tickets (#2–#11)
+> - Model choice: `docs/model-eval/` (6 small vision models tested)
+> - Domain terms: `GLOSSARY.md`; decisions: `docs/adr/`
+>
+> The sections below describe the old version and will be replaced in slice 01.
+
 Project Overview
 Sports Insight Bot is a full-stack AI-powered sports analysis chatbot that provides tactical insights, match analysis, and image-based sports discussions through an interactive conversational interface.
 
@@ -49,7 +56,7 @@ MONOREPO STRUCTURE:
 sports-insight-bot/
 │
 ├── backend/
-│   ├── main.py              # FastAPI backend
+│   ├── backend.py           # FastAPI backend
 │   ├── requirements.txt     # Python dependencies
 │   ├── Procfile             # Render deployment config
 │   └── .env                 # Environment variables (not committed)
@@ -80,13 +87,11 @@ Backend:
 
 cd backend
 pip install -r requirements.txt
-uvicorn main:app --reload
+uvicorn backend:app --reload
 
 Frontend:
 
-cd frontend
-npm install
-npm start
+Static files, no build step: open frontend/index.html in a browser.
 
 Security Notes
 API keys are stored using environment variables
@@ -101,5 +106,3 @@ Interests: FullStack Development, AI/ML, Systems Programming
 Acknowledgements
 This project is built for learning, experimentation, and evaluation purposes, and demonstrates real-world integration of AI, backend APIs, and frontend deployment.
 
-soon to be updated
-most probably tonight
