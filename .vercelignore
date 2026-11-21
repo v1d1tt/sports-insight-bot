@@ -11,6 +11,7 @@
 
 # Local tools, caches and build output
 .claude
+.impeccable
 **/.venv
 **/node_modules
 **/dist
@@ -18,3 +19,4 @@
 **/playwright-report
 **/.pytest_cache
 **/.ruff_cache
+.impeccable

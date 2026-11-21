@@ -15,22 +15,23 @@
   }
 </script>
 
+<!-- The match details at the top of a scorebook page. -->
 <fieldset class="focus">
-  <legend>Sport focus</legend>
+  <legend class="sr-only">Sport focus</legend>
   <label>
-    Sport
+    <span class="label">Sport</span>
     <select value={session.sportFocus.sport} onchange={setSport}>
       {#each SPORTS as sport (sport.value)}
         <option value={sport.value}>{sport.label}</option>
       {/each}
     </select>
   </label>
-  <label>
-    Team (optional)
+  <label class="team">
+    <span class="label">Team (optional)</span>
     <input
       value={session.sportFocus.team}
       maxlength={MAX_TEAM_LENGTH}
-      placeholder="For example: India"
+      placeholder="India"
       autocomplete="off"
       onchange={setTeam}
     />
@@ -44,32 +45,73 @@
   .focus {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem 1rem;
     align-items: end;
+    gap: 0.25rem 1.5rem;
     margin: 0;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 1rem 0.625rem;
     border: 0;
-    border-bottom: 1px solid GrayText;
-  }
-
-  legend {
-    float: left;
-    font-weight: bold;
-    margin-right: 0.5rem;
+    border-bottom: 1px solid var(--rule-strong);
+    background: var(--paper);
   }
 
   label {
     display: flex;
-    flex-direction: column;
+    align-items: baseline;
+    gap: 0.5rem;
   }
 
+  .team {
+    flex: 1 1 10rem;
+    max-width: 22rem;
+  }
+
+  /* Form fields as written lines: no box, a printed rule underneath. */
   select,
   input {
-    font: inherit;
+    min-height: 2.25rem;
+    padding: 0 0.25rem;
+    border: 0;
+    border-bottom: 1px solid var(--rule-strong);
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink);
+    font-weight: 600;
+    transition: border-color var(--dur-fast) ease;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  select:hover,
+  input:hover,
+  select:focus-visible,
+  input:focus-visible {
+    border-bottom-color: var(--ink);
+  }
+
+  select:focus-visible,
+  input:focus-visible {
+    outline-offset: 0;
+  }
+
+  select option {
+    background: var(--paper-raised);
+    color: var(--pencil);
+  }
+
+  input::placeholder {
+    color: var(--pencil-soft);
+    font-weight: 400;
+    font-style: italic;
   }
 
   .hint {
+    flex-basis: 100%;
     margin: 0;
-    color: GrayText;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--print);
   }
 </style>
