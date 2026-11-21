@@ -1,7 +1,6 @@
 // The Field placement shape the server sends in a `field_placement` event
-// (see docs/PRD.md). The server has already checked it against the Fielding
-// restrictions, so the page only draws it. (The browser's own check of the
-// same rules comes with dragging, in ticket 06.)
+// (see docs/PRD.md), and how the Board draws it. The browser's own check of
+// the Fielding restrictions, for the Visitor's edits, is in fielding.ts.
 
 export type Format = 'T20' | 'ODI' | 'Test'
 export type Phase = 'powerplay' | 'middle' | 'death'
@@ -27,6 +26,8 @@ export const GROUND = { circleRadius: 0.43, strikerY: 0.1, bowlerY: -0.15 } as c
 
 /** A label's place on the drawing, in Ground units, with the picture's y pointing down. */
 export type LabelPlace = {
+  /** The fielder's index in the `fielders` list that was given. */
+  index: number
   position: string
   /** The fielder's dot. */
   dotX: number
@@ -45,14 +46,15 @@ const GAP = 0.035 // between a dot and its label
  * Place each fielder's label beside its dot, on the side away from the
  * middle, and push labels down until no two overlap (slip cordons are tight).
  * The picture shows the wicketkeeper at the top, so picture y = -y.
+ * Returns one label per fielder, in the order of `fielders`.
  */
 export function placeLabels(fielders: Fielder[]): LabelPlace[] {
   const placed: { left: number; right: number; top: number; bottom: number }[] = []
-  const sorted = [...fielders].sort((a, b) => b.y - a.y) // top of the picture first
-  return sorted.map((fielder) => {
+  const sorted = fielders.map((fielder, index) => ({ fielder, index })).sort((a, b) => b.fielder.y - a.fielder.y) // top of the picture first
+  const labels: LabelPlace[] = sorted.map(({ fielder, index }) => {
     const dotX = fielder.x
     const dotY = -fielder.y
-    const anchor = fielder.x < 0 ? 'end' : 'start'
+    const anchor: LabelPlace['anchor'] = fielder.x < 0 ? 'end' : 'start'
     const width = fielder.position.length * CHAR_WIDTH
     const x = anchor === 'end' ? dotX - GAP : dotX + GAP
     const left = anchor === 'end' ? x - width : x
@@ -69,8 +71,9 @@ export function placeLabels(fielders: Fielder[]): LabelPlace[] {
       }
       y = hit.bottom + LINE_HEIGHT / 2
     }
-    return { position: fielder.position, dotX, dotY, x, y, anchor }
+    return { index, position: fielder.position, dotX, dotY, x, y, anchor }
   })
+  return labels.sort((a, b) => a.index - b.index) // back in the given order
 }
 
 /** How many fielders (not the bowler or wicketkeeper) stand outside the 30-yard circle. */

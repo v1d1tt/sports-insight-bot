@@ -135,3 +135,23 @@ test('an Analyst Message keeps its Field placement, also after the store opens a
   const [message] = await reopened.getMessages(chat.id)
   expect(message.field).toEqual(field)
 })
+
+test('an edited Field placement replaces the saved one and survives a reopen', async () => {
+  const chat = await store.createChat()
+  const field = {
+    format: 'T20' as const,
+    phase: 'powerplay' as const,
+    bowler_type: 'right-arm fast',
+    batter_hand: 'right' as const,
+    fielders: [{ position: 'bowler', x: 0, y: -0.2 }],
+  }
+  const saved = await store.addMessage(chat.id, 'analyst', 'Here is the field.', { field })
+  const edited = { ...field, batter_hand: 'left' as const, fielders: [{ position: 'bowler', x: 0, y: -0.2 }] }
+
+  await store.setField(saved.id, edited)
+
+  const reopened = await openChatStore(name)
+  const [message] = await reopened.getMessages(chat.id)
+  expect(message.field).toEqual(edited)
+  expect(message.text).toBe('Here is the field.')
+})

@@ -1,5 +1,6 @@
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { svelteTesting } from '@testing-library/svelte/vite'
+import { searchForWorkspaceRoot } from 'vite'
 import { defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
@@ -8,6 +9,8 @@ export default defineConfig({
   server: {
     // In dev, send /api requests to the local FastAPI server (same paths as on Vercel).
     proxy: { '/api': 'http://127.0.0.1:8000' },
+    // The Fielding restrictions file lives in backend/ (docs/adr/0003); let dev serve it.
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), '../backend/app/fielding/restrictions.json'] },
   },
   test: {
     environment: 'jsdom',

@@ -2,7 +2,7 @@
 
 A cricket-first sports Analyst you chat with. You ask about a match, a tactic or a screenshot, and the Analyst explains it. For cricket it will also draw its answer on an interactive Ground (field placements and wagon wheels).
 
-**Status (Nov 2026): rebuild in progress.** The app is being rebuilt in 10 vertical slices. Slices 01 (walking skeleton), 02 (streaming chat), 03 (images and Sport focus), 04 (UI direction and voice input) and 05 (Field placement on the Board) are done: you can chat with the Analyst by typing or speaking, show it up to 4 images per Message, pick the sport the Chat is about, and the reply streams in word by word as formatted text. Ask for a cricket field and the Analyst draws it on a Ground under its reply, checked against the Fielding restrictions. Your Chats, with their images, are saved in your own browser.
+**Status (Nov 2026): rebuild in progress.** The app is being rebuilt in 10 vertical slices. Slices 01 (walking skeleton), 02 (streaming chat), 03 (images and Sport focus), 04 (UI direction and voice input) and 05 (Field placement on the Board) and 06 (interactive Board) are done: you can chat with the Analyst by typing or speaking, show it up to 4 images per Message, pick the sport the Chat is about, and the reply streams in word by word as formatted text. Ask for a cricket field and the Analyst draws it on a Ground under its reply, checked against the Fielding restrictions. Then play with it: drag fielders (mouse, touch or keyboard), flip the Batter hand, change the Format and Phase, watch the live rule warnings, and ask the Analyst about your field. Your Chats, with their images, are saved in your own browser.
 
 **Live:** https://sports-insight-bot.vercel.app
 
@@ -12,6 +12,12 @@ A cricket-first sports Analyst you chat with. You ask about a match, a tactic or
 |---|---|
 | <img src="docs/screenshots/phone.png" alt="The app at phone width" width="260"> | <img src="docs/screenshots/desktop-dark.png" alt="The app in dark mode" width="520"> |
 
+### Try the Board
+
+Open the [live app](https://sports-insight-bot.vercel.app), ask "Set a T20 powerplay field for a fast bowler", then drag a fielder out to the boundary. The Board renames the fielder to the nearest Fielding position as it moves, warns the moment the field breaks a Fielding restriction, and "Ask the Analyst about this field" gets a comment on your exact field.
+
+<img src="docs/screenshots/board-interactive.png" alt="The interactive Board: point dragged out to deep point, with the warning that a T20 powerplay allows at most 2 fielders outside the 30-yard circle" width="420">
+
 The old version (vanilla HTML/JS and a FastAPI server, deployed from two other repos) stopped working when its model lost all providers on OpenRouter. This repo replaces it.
 
 ## What works now
@@ -20,14 +26,15 @@ The old version (vanilla HTML/JS and a FastAPI server, deployed from two other r
 |---|---|
 | Look | "Scorer's book", chosen by the owner from four options: the Chat is a ruled scorebook page, the Analyst writes in pencil grey and the Visitor in ballpoint blue, red only for errors. Condensed athletic capitals (Big Shoulders Display) for labels and numbers, Public Sans for text. Light and dark mode follow the device. Motion (page settle, rolling numbers, a dot-ball "thinking" over, a pencil caret while streaming) turns off with the system's reduce-motion setting. Details: [docs/learning/04-ui-and-voice.md](docs/learning/04-ui-and-voice.md). |
 | Layout | Desktop: the Chat list is a rail on the left, the Chat fills the rest (the Board will dock on the right). Phone (from 375 px, touch): the Chat fills the screen and the Chat list opens as a drawer from the header. No sideways scroll; every control has a label and a visible focus ring. |
-| Board | Ask for a cricket field ("set a T20 powerplay field for a quick to a left-hander") and the Analyst draws its Field placement on a Ground under its reply: eleven labelled fielders, the 30-yard circle, the Pitch, the off and leg sides, and how many fielders stand outside the circle. The model can show a field only through the `show_field_placement` tool, which is offered only when the Sport focus is cricket. The server checks every field: shape (11 fielders, one bowler, one wicketkeeper, known Fielding position names, inside the Ground), the Fielding restrictions for its Format and Phase, and that each fielder stands on the side its name says. A bad field goes back to the model once with the reasons; if the repair also fails, the reply is text only. Fields are saved with the Chat and redrawn after a reload. Dragging fielders comes in slice 06. Details: [docs/learning/05-field-placement.md](docs/learning/05-field-placement.md). |
+| Board | Ask for a cricket field ("set a T20 powerplay field for a quick to a left-hander") and the Analyst draws its Field placement on a Ground under its reply: eleven labelled fielders, the 30-yard circle, the Pitch, the off and leg sides, and how many fielders stand outside the circle. The model can show a field only through the `show_field_placement` tool, which is offered only when the Sport focus is cricket. The server checks every field: shape (11 fielders, one bowler, one wicketkeeper, known Fielding position names, inside the Ground), the Fielding restrictions for its Format and Phase, and that each fielder stands on the side its name says. A bad field goes back to the model once with the reasons; if the repair also fails, the reply is text only. Fields are saved with the Chat and redrawn after a reload. Details: [docs/learning/05-field-placement.md](docs/learning/05-field-placement.md). |
+| Interactive Board | Drag any fielder except the bowler and wicketkeeper with the mouse or a finger (the page does not scroll while you drag), or Tab to a fielder and use the arrow keys (Shift for bigger steps). While it moves, the fielder takes the name of the nearest free Fielding position. "Right-hander" / "Left-hander" mirrors every fielder. Format and Phase pickers set which Fielding restrictions apply. Live warnings under the Ground say which rule the field breaks (too many outside the 30-yard circle, too many behind square on the leg side), and those fielders turn red; the browser's check reads the same data file and passes the same test cases as the server's. Every change is saved with the Chat. "Ask the Analyst about this field" sends the field as it stands; the server checks it again and puts it, with the rules it breaks, into the prompt. Details: [docs/learning/06-interactive-board.md](docs/learning/06-interactive-board.md). |
 | Voice | The mic button uses the browser's speech-to-text (Web Speech API). Words appear in the Message box while you speak, after anything you already typed; you edit and press Send. The button is hidden in browsers without speech recognition (for example Firefox). In Chrome and Edge the browser sends the audio to its own speech service; the app only gets the text. |
 | Chat | Ask the Analyst a question, or start from one of the example questions in an empty Chat. A "thinking" line shows first, then the reply streams in word by word and renders as Markdown (tables, lists, bold), sanitised. **Stop** ends a reply and keeps the text so far. A failure shows a clear message with **Retry**. |
 | Images | Attach, paste or drop up to 4 JPEG, PNG or WebP images per Message, with a preview and a Remove button for each. The browser shrinks each image to 1600 px on the long side (smaller if it is still over 700 KB) and keeps its real type, so a 14 MB phone photo goes out in under 1 MB. A note by the button says images go to the model provider. Images are saved with the Chat. In the prompt, text read from images is labelled as untrusted data. |
 | Sport focus | Pick cricket (default), football, basketball, tennis or Other, and optionally a team. Each Chat keeps its own Sport focus and sends it with every request; it changes how the Analyst frames its answers. Non-cricket sports get text answers only. |
 | Chats | Start a new Chat without a reload, see your Chats (titled from their first Message), open, rename and delete them. They live in your browser's IndexedDB, survive a reload, and no other Visitor can see them. |
 | Limits | Each request sends only the last 20 Messages (the server trims again), and only the newest Message with images carries them. Visitor Messages are up to 2,000 characters. The server refuses more than 4 images in a Message and an image that is not the type it claims (clear `error` event), and a body over 4.5 MB (HTTP 413, like Vercel; the page shows "This Message is too large to send"). On HTTP 429 from the Vercel firewall the page says "Limit reached … try again after HH:MM". |
-| API | `POST /api/chat` takes `messages` (each `{role, text, images?}`, an image is `{media_type, data}` in base64) and `sport_focus` (`{sport, team}`), and streams server-sent events: `text`, at most one `field_placement` (`{field}`: a checked Field placement), then `done` or `error` (`code`, `message`, `retryable`). `GET /api/health` returns `{"status": "ok", "model": "<model ID>"}`. The model ID comes from `OPENROUTER_MODEL` (default `google/gemma-4-26b-a4b-it`). |
+| API | `POST /api/chat` takes `messages` (each `{role, text, images?}`, an image is `{media_type, data}` in base64) `sport_focus` (`{sport, team}`) and an optional `board` (`{field}`: the Field placement the Visitor asks about; checked like a tool call, 422 if badly shaped), and streams server-sent events: `text`, at most one `field_placement` (`{field}`: a checked Field placement), then `done` or `error` (`code`, `message`, `retryable`). `GET /api/health` returns `{"status": "ok", "model": "<model ID>"}`. The model ID comes from `OPENROUTER_MODEL` (default `google/gemma-4-26b-a4b-it`). |
 | CI | Every push and pull request runs ruff, pytest, svelte-check, Vitest and Playwright. `main` only accepts pull requests with a green check. |
 
 ## Stack
@@ -45,8 +52,9 @@ The old version (vanilla HTML/JS and a FastAPI server, deployed from two other r
 | Image resize | Browser APIs only: `createImageBitmap` + canvas `toBlob` | No package needed. It turns photos upright from their EXIF data, keeps the image type, and drops metadata such as GPS location. |
 | Look | Plain scoped CSS with CSS variables (`frontend/src/app.css`), self-hosted fonts from `@fontsource-variable` (Big Shoulders Display, Public Sans), icons from `@tabler/icons-svelte-runes` | No CSS framework to learn or override; one place for the colours of both modes; no request to Google Fonts; icons imported one by one so only the used ones are built in. |
 | Voice | Web Speech API (`SpeechRecognition`), no package | Built into Chrome, Edge and Safari; free; the transcript stays editable before sending. |
-| Fielding restrictions | One JSON data file (`backend/app/fielding/restrictions.json`) with the limits, the Fielding position names and a standard spot for each, plus one shared table of test cases (`backend/tests/fielding_cases.json`) | The server and (from slice 06) the browser read the same numbers and pass the same cases, so the two checks cannot disagree ([ADR 0003](docs/adr/0003-one-shared-source-for-fielding-restrictions.md)). The file lives inside `backend/` because the Vercel API function bundles only its own folder. |
+| Fielding restrictions | One JSON data file (`backend/app/fielding/restrictions.json`) with the limits, the Fielding position names and a standard spot for each, plus one shared table of test cases (`backend/tests/fielding_cases.json`) | The server and the browser (`frontend/src/lib/fielding.ts`) read the same numbers and pass the same cases, so the two checks cannot disagree ([ADR 0003](docs/adr/0003-one-shared-source-for-fielding-restrictions.md)). The file lives inside `backend/` because the Vercel API function bundles only its own folder. |
 | Board drawing | Plain SVG in a Svelte component, no chart or canvas library | A Ground is a few circles, a rectangle and eleven dots; SVG scales to any width and keeps text selectable and readable by screen readers. |
+| Board drag | Pointer Events with pointer capture and `getScreenCTM()`, no drag library | One code path for mouse, touch and pen, and a few lines of code; arrow keys give the same moves without a pointer. |
 | Tests | pytest, Vitest + Testing Library, Playwright | One test layer per part: API, component, whole page in a real browser. |
 | Visual feedback | Vercel Toolbar comments (preview deploys), sv-agentation (local dev only) | The owner leaves notes on the running page, and the coding agent reads and fixes them. |
 
@@ -57,8 +65,9 @@ frontend/                 Svelte 5 + Vite + TypeScript page (static build)
   src/app.css                    colours (light and dark), fonts, shared button styles, reduced motion
   src/App.svelte                 header, layout, phone drawer
   src/lib/ChatView.svelte        Sport focus, the ruled Message log, thinking and streaming states, errors
-  src/lib/Board.svelte           the Board: draws a Field placement on the Ground (SVG)
+  src/lib/Board.svelte           the Board: draws a Field placement (SVG); drag, keys, mirror, pickers, warnings, ask
   src/lib/field-placement.ts     the Field placement type, label layout, outside-circle count
+  src/lib/fielding.ts            Fielding restrictions in the browser (reads backend/.../restrictions.json), mirror, nearest position
   src/lib/Composer.svelte        Message box: images, mic, Send / Stop
   src/lib/voice-input.svelte.ts  voice input: wraps the Web Speech API
   src/lib/RollingNumber.svelte   numbers that roll to a new value
@@ -74,7 +83,7 @@ frontend/                 Svelte 5 + Vite + TypeScript page (static build)
   e2e/                    Playwright tests (API mocked)
 backend/                  FastAPI API, served under /api
   app/main.py             routes (GET /api/health, POST /api/chat)
-  app/analyst.py          the Analyst: prompt, Sport focus, images, 20-Message history, the field tool loop (one repair), error messages
+  app/analyst.py          the Analyst: prompt, Sport focus, images, Board state, 20-Message history, the field tool loop (one repair), error messages
   app/fielding/           Fielding restrictions: restrictions.json (the shared data) and the Python check + tool schema
   app/input_guard.py      limits checked before the model call: 4 images, real image types
   app/openrouter.py       the OpenRouter adapter (streamed chat completions and tool calls)
@@ -138,7 +147,7 @@ npx playwright install chromium   # once, downloads the test browser
 npm run test:e2e                  # Playwright: builds the page and tests it in Chromium
 ```
 
-No test calls the network or needs a key. The voice tests use a fake speech recogniser, and one Playwright test runs at 375 px with touch. pytest replaces the model with a fake provider (and tests the real OpenRouter adapter against recorded stream bytes). Vitest uses an in-memory IndexedDB. Playwright mocks every `/api` request; the streaming tests use a small local SSE server, and the image tests draw their own images in the browser (no image files in the repo). CI runs all of these on every push and pull request ([workflow](.github/workflows/ci.yml)).
+No test calls the network or needs a key. The voice tests use a fake speech recogniser, and Playwright tests run at phone width with touch (including a real touch drag on the Board through the Chrome DevTools Protocol). pytest replaces the model with a fake provider (and tests the real OpenRouter adapter against recorded stream bytes). Vitest uses an in-memory IndexedDB. Playwright mocks every `/api` request; the streaming tests use a small local SSE server, and the image tests draw their own images in the browser (no image files in the repo). CI runs all of these on every push and pull request ([workflow](.github/workflows/ci.yml)).
 
 ## Deploy
 

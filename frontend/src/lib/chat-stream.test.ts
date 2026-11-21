@@ -218,3 +218,18 @@ test('a field_placement event reaches onFieldPlacement between the text pieces',
   expect(result).toEqual({ status: 'done' })
   expect(seen).toEqual(['Two slips. ', field, 'Fine leg back.'])
 })
+
+test('sends the Board state when the Visitor asks about a field', async () => {
+  const fetch = mockFetch(() => sseResponse(['event: done\ndata: {}\n\n']))
+  const field = {
+    format: 'T20' as const,
+    phase: 'death' as const,
+    bowler_type: 'left-arm spin',
+    batter_hand: 'left' as const,
+    fielders: [{ position: 'bowler', x: 0, y: -0.2 }],
+  }
+
+  await streamReply(question, { onText: () => {}, board: { field } })
+
+  expect(JSON.parse(String(fetch.mock.calls[0][1].body)).board).toEqual({ field })
+})

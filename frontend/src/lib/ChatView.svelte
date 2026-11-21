@@ -93,7 +93,12 @@
             <!-- renderMarkdown() sanitises the HTML (markdown-it + DOMPurify) -->
             <div class="markdown">{@html renderMarkdown(message.text)}</div>
             {#if message.field}
-              <Board field={message.field} />
+              <Board
+                field={message.field}
+                onchange={(field) => session.editField(message.id, field)}
+                onask={(field) => session.askAboutField(field)}
+                askDisabled={session.busy}
+              />
             {/if}
           {:else}
             {#if message.images?.length}

@@ -25,6 +25,8 @@ export type StreamOptions = {
   signal?: AbortSignal
   /** The Chat's Sport focus; cricket when not given. */
   sportFocus?: SportFocus
+  /** The Board as it now stands, sent with "Ask the Analyst about this field". */
+  board?: { field: FieldPlacement }
 }
 
 // The Vercel firewall blocks an IP for 1 hour after it passes the chat limit
@@ -56,11 +58,12 @@ const DROPPED: StreamResult = {
 /** Send the recent Messages to the Analyst and stream its reply. */
 export async function streamReply(
   messages: ChatMessage[],
-  { onText, onFieldPlacement, signal, sportFocus = DEFAULT_SPORT_FOCUS }: StreamOptions,
+  { onText, onFieldPlacement, signal, sportFocus = DEFAULT_SPORT_FOCUS, board }: StreamOptions,
 ): Promise<StreamResult> {
   const body = {
     messages: requestMessages(messages),
     sport_focus: { sport: sportFocus.sport, team: sportFocus.team },
+    ...(board ? { board } : {}),
   }
 
   let response: Response
