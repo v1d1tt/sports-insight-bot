@@ -70,6 +70,8 @@ async function showBoard(page: Page) {
   await page.goto('/')
   await askForAField(page)
   const board = page.getByRole('log', { name: 'Messages' }).getByRole('figure', { name: 'Field placement' })
+  // Wait for the saved Board (it has the "ask" button), not the streaming one it replaces.
+  await expect(board.getByRole('button', { name: 'Ask the Analyst about this field' })).toBeVisible()
   await expect(board.locator('text.name')).toHaveCount(11)
   return { api, board }
 }
