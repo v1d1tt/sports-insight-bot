@@ -49,7 +49,10 @@ test('streams the text pieces in order and finishes with done', async () => {
   const [url, init] = fetch.mock.calls[0]
   expect(url).toBe('/api/chat')
   expect(init.method).toBe('POST')
-  expect(JSON.parse(String(init.body))).toEqual({ messages: question })
+  expect(JSON.parse(String(init.body))).toEqual({
+    messages: question,
+    sport_focus: { sport: 'cricket', team: '' },
+  })
 })
 
 test('sends only the last 20 Messages and skips empty ones', async () => {
@@ -139,4 +142,58 @@ test('aborting the request stops the reply after the text so far', async () => {
 
   expect(result).toEqual({ status: 'stopped' })
   expect(pieces).toEqual(['Use a deep point '])
+})
+
+const png = { mediaType: 'image/png', data: 'iVBORw0K' } as const
+const jpeg = { mediaType: 'image/jpeg', data: '/9j/4AAQ' } as const
+
+test('sends the newest images with their MIME type, and the Sport focus', async () => {
+  const fetch = mockFetch(() => sseResponse(['event: done\ndata: {}\n\n']))
+  const history: ChatMessage[] = [
+    { role: 'visitor', text: 'Old photo', images: [jpeg] },
+    { role: 'analyst', text: 'That is a slip cordon.' },
+    { role: 'visitor', text: 'And these?', images: [png, jpeg] },
+    { role: 'analyst', text: 'Two fields.' },
+    { role: 'visitor', text: 'Which is better?' },
+  ]
+
+  await streamReply(history, {
+    onText: () => {},
+    sportFocus: { sport: 'football', team: 'Arsenal' },
+  })
+
+  const body = JSON.parse(String(fetch.mock.calls[0][1].body))
+  expect(body.sport_focus).toEqual({ sport: 'football', team: 'Arsenal' })
+  // Only the latest Message with images carries them, so the body stays small.
+  expect(body.messages.map((m: { images?: unknown[] }) => m.images ?? [])).toEqual([
+    [],
+    [],
+    [
+      { media_type: 'image/png', data: 'iVBORw0K' },
+      { media_type: 'image/jpeg', data: '/9j/4AAQ' },
+    ],
+    [],
+    [],
+  ])
+})
+
+test('a Message with only images is sent', async () => {
+  const fetch = mockFetch(() => sseResponse(['event: done\ndata: {}\n\n']))
+
+  await streamReply([{ role: 'visitor', text: '', images: [png] }], { onText: () => {} })
+
+  const sent = JSON.parse(String(fetch.mock.calls[0][1].body)).messages
+  expect(sent).toEqual([{ role: 'visitor', text: '', images: [{ media_type: 'image/png', data: 'iVBORw0K' }] }])
+})
+
+test('HTTP 413 (body too large) is a clear failure that Retry cannot fix', async () => {
+  mockFetch(() => new Response('Request Entity Too Large', { status: 413 }))
+
+  const result = await streamReply(question, { onText: () => {} })
+
+  expect(result).toEqual({
+    status: 'failed',
+    message: 'This Message is too large to send. Remove an image and try again.',
+    retryable: false,
+  })
 })

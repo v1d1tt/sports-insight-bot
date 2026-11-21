@@ -7,8 +7,9 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from pydantic import BaseModel, Field
 
-from app.analyst import ChatMessage, stream_reply
+from app.analyst import ChatMessage, SportFocus, stream_reply
 from app.config import SettingsDep
+from app.input_guard import check_request
 from app.model_provider import ModelProvider
 from app.openrouter import OpenRouterProvider
 
@@ -40,6 +41,13 @@ class ChatRequest(BaseModel):
     """The recent Messages of one Chat, oldest first, ending with the Visitor's."""
 
     messages: Annotated[list[ChatMessage], Field(min_length=1)]
+    sport_focus: SportFocus = Field(default_factory=SportFocus)
+
+
+# Vercel refuses request bodies over 4.5 MB with HTTP 413 before our code runs.
+# The same limit here makes local runs answer the same way. The page turns a 413
+# into a clear message (chat-stream.ts), because on Vercel no code of ours can.
+MAX_CHAT_BODY_BYTES = 4_500_000
 
 
 def get_model_provider(request: Request, settings: SettingsDep) -> ModelProvider:
@@ -56,10 +64,16 @@ ModelProviderDep = Annotated[ModelProvider, Depends(get_model_provider)]
 @app.post(
     "/api/chat",
     response_class=EventSourceResponse,
-    max_body_size=512 * 1024,  # 20 Messages, Analyst replies included, fit easily
+    max_body_size=MAX_CHAT_BODY_BYTES,
 )
 async def chat(
     chat_request: ChatRequest, provider: ModelProviderDep
 ) -> AsyncIterable[ServerSentEvent]:
-    async for event in stream_reply(chat_request.messages, provider):
+    if refused := check_request(chat_request.messages):
+        yield ServerSentEvent(
+            event=refused.type, data=refused.model_dump(exclude={"type"})
+        )
+        return
+    events = stream_reply(chat_request.messages, provider, chat_request.sport_focus)
+    async for event in events:
         yield ServerSentEvent(event=event.type, data=event.model_dump(exclude={"type"}))

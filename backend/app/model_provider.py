@@ -8,11 +8,29 @@ from collections.abc import AsyncGenerator, Sequence
 from typing import Literal, Protocol, TypedDict
 
 
+class ImageUrl(TypedDict):
+    url: str  # a data URL: data:<mime type>;base64,<data>
+
+
+class TextPart(TypedDict):
+    type: Literal["text"]
+    text: str
+
+
+class ImagePart(TypedDict):
+    type: Literal["image_url"]
+    image_url: ImageUrl
+
+
 class ProviderMessage(TypedDict):
-    """One chat message in the format model providers expect."""
+    """One chat message in the format model providers expect.
+
+    `content` is plain text, or a list of parts when the Message has images
+    (OpenAI-style content parts, which OpenRouter's chat completions API takes).
+    """
 
     role: Literal["system", "user", "assistant"]
-    content: str
+    content: str | list[TextPart | ImagePart]
 
 
 class ProviderError(Exception):

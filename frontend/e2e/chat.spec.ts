@@ -122,10 +122,11 @@ test('a failed reply shows the error, and Retry gets the reply', async ({ page }
 
   await expect(messages(page).last()).toContainText('Here is the answer.')
   await expect(page.getByRole('alert')).toHaveCount(0)
-  expect(api.chatRequests).toEqual([
-    { messages: [{ role: 'visitor', text: 'Best death bowler?' }] },
-    { messages: [{ role: 'visitor', text: 'Best death bowler?' }] },
-  ])
+  const request = {
+    messages: [{ role: 'visitor', text: 'Best death bowler?' }],
+    sport_focus: { sport: 'cricket', team: '' },
+  }
+  expect(api.chatRequests).toEqual([request, request])
 })
 
 test('HTTP 429 from the firewall shows the limit message with a time', async ({ page }) => {
