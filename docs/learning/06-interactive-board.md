@@ -56,6 +56,10 @@ Visitor presses "Ask the Analyst about this field"
 | The server re-checks the Board state and writes the broken rules into the prompt | The model does not have to count fielders itself (it is bad at it), and the browser's numbers are never trusted: the same Pydantic model as the tool rejects a bad field with HTTP 422. The bowler type is quoted with `json.dumps`, so it reads as data. |
 | Vite `server.fs.allow` for `restrictions.json` | The file lives in `backend/` (the Vercel API function only bundles its own folder). The build reads it fine; the dev server needs the permission to serve it. |
 
+## Fix after the first production check
+
+The first real "ask" on production talked about the exact field but did not say it broke the T20 powerplay limit, and it suggested a change that also broke a rule. The rules part of the Board state now comes last (right before the model answers) and is firm: a broken field must open the reply with each broken rule and which fielders to move, the limits for the field are listed, and "Never suggest a change that breaks a Fielding restriction." Tests: `test_a_broken_field_tells_the_analyst_to_name_the_rules_first`, `test_a_legal_field_still_tells_the_analyst_the_limits`.
+
 ## Versions
 
 Svelte 5.59.1, Vite 8.3.8, Vitest 5.1.1, Playwright 1.65.1, FastAPI 0.165.0, Pydantic 2.14.4. Docs checked in Context7: Vite `server.fs.allow`, MDN Pointer Events / `setPointerCapture` / `getScreenCTM`, Playwright mouse input.

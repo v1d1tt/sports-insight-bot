@@ -20,6 +20,7 @@ from app.events import (
     TextEvent,
 )
 from app.fielding import (
+    RESTRICTIONS,
     SHOW_FIELD_PLACEMENT,
     FieldPlacement,
     check_restrictions,
@@ -150,16 +151,36 @@ PHASE_NAMES = {
 
 
 def board_text(board: BoardState) -> str:
-    """The Board state as data for the model, put after the Visitor's question."""
+    """The Board state as data for the model, put after the Visitor's question.
+
+    The rules part comes last, right before the model answers: a broken
+    Fielding restriction must open the reply, and no suggestion may break one.
+    """
     field = board.field
     phase = "" if field.format == "Test" else f" {PHASE_NAMES[field.phase]}"
     fielders = "; ".join(f"{f.position} ({f.x:g}, {f.y:g})" for f in field.fielders)
     broken = [violation.message for violation in check_restrictions(field)]
-    rules = (
-        "It breaks these Fielding restrictions: " + " ".join(broken)
-        if broken
-        else "It breaks no Fielding restriction."
+    limit = RESTRICTIONS["max_outside_circle"][field.format][field.phase]
+    leg_limit = RESTRICTIONS["max_behind_square_leg_side"]
+    circle = (
+        f"at most {limit} fielders outside the 30-yard circle (the bowler and "
+        "wicketkeeper do not count) and "
+        if limit is not None
+        else ""
     )
+    limits = (
+        f"The limits for this field: {circle}at most {leg_limit} behind square "
+        "on the leg side. Never suggest a change that breaks a Fielding "
+        "restriction. Do not mention coordinates."
+    )
+    if broken:
+        rules = (
+            "IMPORTANT: Start your answer by saying that this field breaks the "
+            "Fielding restrictions, name each broken rule, and say which "
+            "fielders to move to fix it. Broken: " + " ".join(broken)
+        )
+    else:
+        rules = "It breaks no Fielding restriction."
     # json.dumps quotes the bowler type, so it reads as data, not as a rule.
     return (
         "[Board state] The Visitor changed the Field placement on the Board and "
@@ -168,7 +189,7 @@ def board_text(board: BoardState) -> str:
         "show_field_placement unless the Visitor asks for a new field.\n"
         f"{field.format}{phase}, bowler {json.dumps(field.bowler_type)}, to a "
         f"{field.batter_hand}-handed batter.\n"
-        f"Fielders (x, y): {fielders}.\n{rules}"
+        f"Fielders (x, y): {fielders}.\n{rules}\n{limits}"
     )
 
 
