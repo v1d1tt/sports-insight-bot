@@ -1,5 +1,7 @@
-import { type Chat, type ChatStore, openChatStore, type StoredMessage } from './chat-store'
+import { type Chat, type ChatStore, openChatStore, type StoredMessage, sportFocusOf } from './chat-store'
 import { streamReply } from './chat-stream'
+import { type MessageImage, prepareImages } from './image-prep'
+import { DEFAULT_SPORT_FOCUS, type SportFocus } from './sport-focus'
 
 /** What the Analyst's reply to the last Message is doing. */
 export type ReplyState =
@@ -10,6 +12,9 @@ export type ReplyState =
   | { status: 'rate-limited'; retryAt: Date }
 
 const IDLE: ReplyState = { status: 'idle' }
+
+/** An image attached to the Message being written; the id keys the preview. */
+export type Attachment = { id: string; image: MessageImage }
 
 /**
  * The page's state: the Chat list, the open Chat and its reply.
@@ -24,6 +29,14 @@ export class ChatSession {
   reply = $state.raw<ReplyState>(IDLE)
   /** True when the browser does not let the page save Chats. */
   storeFailed = $state(false)
+  /** The open Chat's Sport focus (for a new Chat: what it will be saved with). */
+  sportFocus = $state.raw<SportFocus>(DEFAULT_SPORT_FOCUS)
+  /** Images attached to the Message being written, already resized. */
+  attachments = $state.raw<Attachment[]>([])
+  /** True while Image prep resizes newly attached images. */
+  preparing = $state(false)
+  /** Why some attached files were left out, or null. */
+  attachError = $state<string | null>(null)
 
   busy = $derived(this.reply.status === 'thinking' || this.reply.status === 'streaming')
 
@@ -47,26 +60,57 @@ export class ChatSession {
     this.stop()
     this.currentChatId = null
     this.messages = []
+    this.sportFocus = DEFAULT_SPORT_FOCUS
+    this.#clearDraftMessage()
     this.#clearReply()
   }
 
   async openChat(id: string) {
     this.stop()
     this.currentChatId = id
+    this.sportFocus = sportFocusOf(this.chats.find((chat) => chat.id === id))
+    this.#clearDraftMessage()
     this.#clearReply()
     this.messages = await (await this.#store).getMessages(id)
   }
 
+  /** Change the Sport focus; an existing Chat saves it at once. */
+  async setSportFocus(focus: SportFocus) {
+    this.sportFocus = focus
+    if (!this.currentChatId) return
+    const store = await this.#store
+    await store.setSportFocus(this.currentChatId, focus)
+    this.chats = await store.listChats()
+  }
+
+  /** Check, resize and attach images the Visitor picked, pasted or dropped. */
+  async attach(files: File[]) {
+    if (files.length === 0) return
+    this.preparing = true
+    const { images, error } = await prepareImages(files, this.attachments.length)
+    const added = images.map((image) => ({ id: crypto.randomUUID(), image }))
+    this.attachments = [...this.attachments, ...added]
+    this.attachError = error
+    this.preparing = false
+  }
+
+  removeAttachment(id: string) {
+    this.attachments = this.attachments.filter((attachment) => attachment.id !== id)
+    this.attachError = null
+  }
+
   async send(text: string) {
     const message = text.trim()
-    if (!message || this.busy) return
+    const images = this.attachments.map((attachment) => attachment.image)
+    if ((!message && images.length === 0) || this.busy || this.preparing) return
     const store = await this.#store
     let chatId = this.currentChatId
     if (!chatId) {
-      chatId = (await store.createChat()).id
+      chatId = (await store.createChat(this.sportFocus)).id
       this.currentChatId = chatId
     }
-    await store.addMessage(chatId, 'visitor', message)
+    this.#clearDraftMessage()
+    await store.addMessage(chatId, 'visitor', message, images)
     this.messages = await store.getMessages(chatId)
     this.chats = await store.listChats()
     await this.#reply(chatId)
@@ -106,9 +150,10 @@ export class ChatSession {
     const isOpen = () => this.currentChatId === chatId
 
     let text = ''
-    const history = this.messages.map(({ role, text }) => ({ role, text }))
+    const history = this.messages.map(({ role, text, images }) => ({ role, text, images }))
     const result = await streamReply(history, {
       signal: stop.signal,
+      sportFocus: this.sportFocus,
       onText: (piece) => {
         text += piece
         if (isOpen()) {
@@ -134,6 +179,11 @@ export class ChatSession {
     } else {
       this.#clearReply()
     }
+  }
+
+  #clearDraftMessage() {
+    this.attachments = []
+    this.attachError = null
   }
 
   #clearReply() {

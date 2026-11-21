@@ -2,7 +2,7 @@
 
 A cricket-first sports Analyst you chat with. You ask about a match, a tactic or a screenshot, and the Analyst explains it. For cricket it will also draw its answer on an interactive Ground (field placements and wagon wheels).
 
-**Status (Nov 2026): rebuild in progress.** The app is being rebuilt in 10 vertical slices. Slices 01 (walking skeleton) and 02 (streaming chat) are done: you can chat with the Analyst, the reply streams in word by word as formatted text, and your Chats are saved in your own browser.
+**Status (Nov 2026): rebuild in progress.** The app is being rebuilt in 10 vertical slices. Slices 01 (walking skeleton), 02 (streaming chat) and 03 (images and Sport focus) are done: you can chat with the Analyst, show it up to 4 images per Message, pick the sport the Chat is about, and the reply streams in word by word as formatted text. Your Chats, with their images, are saved in your own browser.
 
 **Live:** https://sports-insight-bot.vercel.app
 
@@ -13,9 +13,11 @@ The old version (vanilla HTML/JS and a FastAPI server, deployed from two other r
 | Part | What it does |
 |---|---|
 | Chat | Ask the Analyst a question. A "thinking" line shows first, then the reply streams in word by word and renders as Markdown (tables, lists, bold), sanitised. **Stop** ends a reply and keeps the text so far. A failure shows a clear message with **Retry**. |
+| Images | Attach, paste or drop up to 4 JPEG, PNG or WebP images per Message, with a preview and a Remove button for each. The browser shrinks each image to 1600 px on the long side (smaller if it is still over 700 KB) and keeps its real type, so a 14 MB phone photo goes out in under 1 MB. A note by the button says images go to the model provider. Images are saved with the Chat. In the prompt, text read from images is labelled as untrusted data. |
+| Sport focus | Pick cricket (default), football, basketball, tennis or Other, and optionally a team. Each Chat keeps its own Sport focus and sends it with every request; it changes how the Analyst frames its answers. Non-cricket sports get text answers only. |
 | Chats | Start a new Chat without a reload, see your Chats (titled from their first Message), open, rename and delete them. They live in your browser's IndexedDB, survive a reload, and no other Visitor can see them. |
-| Limits | Each request sends only the last 20 Messages (the server trims again). Visitor Messages are up to 2,000 characters. On HTTP 429 from the Vercel firewall the page says "Limit reached … try again after HH:MM". |
-| API | `POST /api/chat` streams server-sent events: `text`, then `done` or `error` (`code`, `message`, `retryable`). `GET /api/health` returns `{"status": "ok", "model": "<model ID>"}`. The model ID comes from `OPENROUTER_MODEL` (default `google/gemma-4-26b-a4b-it`). |
+| Limits | Each request sends only the last 20 Messages (the server trims again), and only the newest Message with images carries them. Visitor Messages are up to 2,000 characters. The server refuses more than 4 images in a Message and an image that is not the type it claims (clear `error` event), and a body over 4.5 MB (HTTP 413, like Vercel; the page shows "This Message is too large to send"). On HTTP 429 from the Vercel firewall the page says "Limit reached … try again after HH:MM". |
+| API | `POST /api/chat` takes `messages` (each `{role, text, images?}`, an image is `{media_type, data}` in base64) and `sport_focus` (`{sport, team}`), and streams server-sent events: `text`, then `done` or `error` (`code`, `message`, `retryable`). `GET /api/health` returns `{"status": "ok", "model": "<model ID>"}`. The model ID comes from `OPENROUTER_MODEL` (default `google/gemma-4-26b-a4b-it`). |
 | CI | Every push and pull request runs ruff, pytest, svelte-check, Vitest and Playwright. `main` only accepts pull requests with a green check. |
 
 ## Stack
@@ -30,6 +32,7 @@ The old version (vanilla HTML/JS and a FastAPI server, deployed from two other r
 | Streaming | FastAPI `EventSourceResponse` → `eventsource-parser` in the page | Server-sent events over a normal POST; the parser handles split chunks and keep-alive pings. |
 | Chat storage | IndexedDB through `idb` | Chats stay in the Visitor's browser, so the server keeps no state ([ADR 0001](docs/adr/0001-chats-live-only-in-the-browser.md)). |
 | Markdown | `markdown-it` (`html: false`) + DOMPurify | Two layers against HTML injection: raw HTML shows as text, then the output is sanitised. |
+| Image resize | Browser APIs only: `createImageBitmap` + canvas `toBlob` | No package needed. It turns photos upright from their EXIF data, keeps the image type, and drops metadata such as GPS location. |
 | Tests | pytest, Vitest + Testing Library, Playwright | One test layer per part: API, component, whole page in a real browser. |
 | Visual feedback | Vercel Toolbar comments (preview deploys), sv-agentation (local dev only) | The owner leaves notes on the running page, and the coding agent reads and fixes them. |
 
@@ -37,17 +40,21 @@ The old version (vanilla HTML/JS and a FastAPI server, deployed from two other r
 
 ```
 frontend/                 Svelte 5 + Vite + TypeScript page (static build)
-  src/lib/ChatView.svelte        Messages, streaming reply, Stop, Retry, composer
+  src/lib/ChatView.svelte        Messages, streaming reply, Stop, Retry, composer, image attach
+  src/lib/SportFocusPicker.svelte  Sport and team for the open Chat
   src/lib/ChatList.svelte        Chat list: new, open, rename, delete
-  src/lib/chat-session.svelte.ts page state; joins the Chat store and the stream client
-  src/lib/chat-store.ts          Chats and Messages in IndexedDB (idb)
+  src/lib/chat-session.svelte.ts page state; joins the Chat store, Image prep and the stream client
+  src/lib/chat-store.ts          Chats (with Sport focus) and Messages (with images) in IndexedDB (idb)
   src/lib/chat-stream.ts         POST /api/chat and read the server-sent events
+  src/lib/image-prep.ts          Image prep: check type and count, resize to 1600 px, base64
+  src/lib/sport-focus.ts         the sports list and the default (cricket)
   src/lib/markdown.ts            Markdown to safe HTML (markdown-it + DOMPurify)
   src/lib/AnalystStatus.svelte   asks the API for its health
   e2e/                    Playwright tests (API mocked)
 backend/                  FastAPI API, served under /api
   app/main.py             routes (GET /api/health, POST /api/chat)
-  app/analyst.py          the Analyst: prompt, 20-Message history, error messages
+  app/analyst.py          the Analyst: prompt, Sport focus, images, 20-Message history, error messages
+  app/input_guard.py      limits checked before the model call: 4 images, real image types
   app/openrouter.py       the OpenRouter adapter (streamed chat completions)
   app/model_provider.py   the adapter interface the Analyst depends on
   app/events.py           the server-sent events: text, error, done
@@ -109,7 +116,7 @@ npx playwright install chromium   # once, downloads the test browser
 npm run test:e2e                  # Playwright: builds the page and tests it in Chromium
 ```
 
-No test calls the network or needs a key. pytest replaces the model with a fake provider (and tests the real OpenRouter adapter against recorded stream bytes). Vitest uses an in-memory IndexedDB. Playwright mocks every `/api` request; the streaming tests use a small local SSE server. CI runs all of these on every push and pull request ([workflow](.github/workflows/ci.yml)).
+No test calls the network or needs a key. pytest replaces the model with a fake provider (and tests the real OpenRouter adapter against recorded stream bytes). Vitest uses an in-memory IndexedDB. Playwright mocks every `/api` request; the streaming tests use a small local SSE server, and the image tests draw their own images in the browser (no image files in the repo). CI runs all of these on every push and pull request ([workflow](.github/workflows/ci.yml)).
 
 ## Deploy
 

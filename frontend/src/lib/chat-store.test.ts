@@ -81,3 +81,40 @@ test('Chats are still there when the store is opened again, as after a page relo
   expect((await reopened.listChats()).map((c) => c.title)).toEqual(['Remember me'])
   expect((await reopened.getMessages(chat.id)).map((m) => m.text)).toEqual(['Remember me'])
 })
+
+const png = { mediaType: 'image/png', data: 'iVBORw0K' } as const
+
+test('a Message keeps its images, also after the store opens again', async () => {
+  const chat = await store.createChat()
+  await store.addMessage(chat.id, 'visitor', 'What field is this?', [png])
+
+  const reopened = await openChatStore(name)
+
+  const [message] = await reopened.getMessages(chat.id)
+  expect(message.images).toEqual([png])
+})
+
+test('a first Message with only images gets a title that says so', async () => {
+  const one = await store.createChat()
+  const two = await store.createChat()
+  await store.addMessage(one.id, 'visitor', '', [png])
+  await store.addMessage(two.id, 'visitor', '', [png, png])
+
+  const titles = (await store.listChats()).map((chat) => chat.title)
+  expect(titles).toEqual(['2 images', 'Image'])
+})
+
+test('each Chat keeps its own Sport focus; cricket by default', async () => {
+  const cricket = await store.createChat()
+  const football = await store.createChat({ sport: 'football', team: '' })
+
+  await store.setSportFocus(football.id, { sport: 'football', team: 'Arsenal' })
+  const reopened = await openChatStore(name)
+
+  const chats = await reopened.listChats()
+  expect(chats.find((c) => c.id === cricket.id)?.sportFocus).toEqual({ sport: 'cricket', team: '' })
+  expect(chats.find((c) => c.id === football.id)?.sportFocus).toEqual({
+    sport: 'football',
+    team: 'Arsenal',
+  })
+})
