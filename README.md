@@ -120,14 +120,14 @@ Vercel builds from GitHub. Each pull request gets a preview URL, and `main` goes
 
 ### Setup outside the code
 
-- **Firewall rule "Chat rate limit"** (Vercel WAF, set once per project): Request Path equals `/api/chat` AND Method equals `POST` → rate limit by IP, fixed window 10 minutes, 20 requests → HTTP 429, persistent for 1 hour. The Hobby plan allows one rate-limit rule with a window of at most 10 minutes, so the 1-hour block stands in for "20 per hour". Create it with the CLI (the first command stages a draft, the second makes it live):
+- **Firewall rule "Chat rate limit"** (Vercel WAF, set once per project): Request Path equals `/api/chat` AND Method equals `POST` → rate limit by IP, fixed window 10 minutes, 20 requests → HTTP 429, persistent for 1 hour. The Hobby plan allows one rate-limit rule with a window of at most 10 minutes, so the 1-hour block stands in for "20 per hour". The rule is live on this project (created 2026-11-21). To create it on a new project, use the Vercel CLI (checked with version 64.0.2; the first command stages a draft, the second makes it live):
 
   ```bash
   vercel firewall rules add "Chat rate limit" --condition '{"type":"path","op":"eq","value":"/api/chat"}' --condition '{"type":"method","op":"eq","value":"POST"}' --action rate_limit --rate-limit-window 600 --rate-limit-requests 20 --rate-limit-keys ip --rate-limit-algo fixed_window --rate-limit-action rate_limit --duration 1h --yes
   ```
 
   ```bash
-  vercel firewall publish --confirm-name sports-insight-bot
+  vercel firewall publish --yes
   ```
 
   Or in the dashboard: project → Firewall → New Rule → the same settings → Save → Review Changes → Publish. Details: [docs/learning/02-streaming-chat.md](docs/learning/02-streaming-chat.md).

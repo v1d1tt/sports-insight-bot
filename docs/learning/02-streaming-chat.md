@@ -96,21 +96,23 @@ Red before green: the chat API tests and the page tests were written first and s
 
 ## Setup outside the code
 
-- **Vercel firewall rule "Chat rate limit"** (ticket #3): condition Request Path equals `/api/chat` AND Method equals `POST`; rate limit by IP, fixed window 600 s (10 minutes), 20 requests; over the limit: HTTP 429, persistent for 1 hour. The PRD first said "20 per hour", but the Hobby plan allows a window of at most 10 minutes, so the 1-hour block replaces the long window. The Vercel MCP could not create the rule (404 "access denied" on the firewall config), so the owner creates it once:
+- **Vercel firewall rule "Chat rate limit"** (ticket #3): condition Request Path equals `/api/chat` AND Method equals `POST`; rate limit by IP, fixed window 600 s (10 minutes), 20 requests; over the limit: HTTP 429, persistent for 1 hour. The PRD first said "20 per hour", but the Hobby plan allows a window of at most 10 minutes, so the 1-hour block replaces the long window. The Vercel MCP could not create the rule (404 "access denied" on the firewall config), so the owner created it with the Vercel CLI 64.0.2 on 2026-11-21. It is live: `vercel firewall rules list` shows "Chat rate limit, Rate Limit (20/600s), Enabled". The commands:
 
   ```bash
   vercel firewall rules add "Chat rate limit" --condition '{"type":"path","op":"eq","value":"/api/chat"}' --condition '{"type":"method","op":"eq","value":"POST"}' --action rate_limit --rate-limit-window 600 --rate-limit-requests 20 --rate-limit-keys ip --rate-limit-algo fixed_window --rate-limit-action rate_limit --duration 1h --yes
   ```
 
   ```bash
-  vercel firewall publish --confirm-name sports-insight-bot
+  vercel firewall publish --yes
   ```
 
-  The first command only stages a draft; `publish` makes it live. Dashboard path: project → Firewall → New Rule → the same settings → Save → Review Changes → Publish.
+  The first command only stages a draft; `publish` makes it live (without `--yes` it asks for confirmation). Dashboard path: project → Firewall → New Rule → the same settings → Save → Review Changes → Publish.
 - **What the 1-hour block covers.** Vercel's docs say a persistent action stores the IP in the platform-wide firewall and blocks it *before* any rule runs. So for that hour, likely every request from the IP is blocked, the page included. A Visitor who reloads then sees Vercel's own block page, not the app's "limit reached" message. The app's message shows for the 429 that starts the block. (Not tested live: it needs 21 real requests.)
 - **`OPENROUTER_API_KEY`** is set on Vercel for Preview and Production.
 
 ## Gotchas found
+
+- **A docs flag the installed CLI did not have.** The Vercel docs showed `vercel firewall publish --confirm-name <project>`; CLI 64.0.2 rejects that flag. Check `--help` of the installed version before writing a command for someone else to run.
 
 - **The 2,000-character limit hit the Analyst's own replies.** A follow-up question failed with HTTP 422, because the earlier reply (sent back as history) was longer than 2,000 characters. Only the live check found it. Fix: one Pydantic model per role, chosen by `role` (a discriminated union).
 - **`route.fulfill()` cannot stream.** It sends the whole body at once. The streaming and Stop tests start a small SSE server inside the test and send `/api/chat` to it with `route.continue({ url })`.
