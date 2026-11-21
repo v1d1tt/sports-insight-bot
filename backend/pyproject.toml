@@ -5,6 +5,7 @@ description = "The API of Sports Insight Bot (FastAPI on Vercel)"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi[standard]>=0.165.0",
+    "httpx2>=2.16.2",
     "pydantic-settings>=2.16.3",
 ]
 
