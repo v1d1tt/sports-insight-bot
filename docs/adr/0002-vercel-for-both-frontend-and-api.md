@@ -1,0 +1,3 @@
+# Vercel hosts both the frontend and the API
+
+The Svelte frontend and the FastAPI API deploy as one Vercel project from this repo. Vercel is the usual AI-tool default, and the portfolio upgrade avoids defaults without a reason. The reason here: the app is small, a single project keeps one URL with no CORS setup, preview deploys give a place for visual feedback comments, and the free plan includes one firewall rate-limit rule. The old split (frontend and backend on separate hosts from separate repos) is retired. Other portfolio projects will use other hosts. Limits to respect: 4.5 MB request body, function duration, no persistent memory.

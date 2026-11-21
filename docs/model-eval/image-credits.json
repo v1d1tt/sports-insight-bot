@@ -1,0 +1,47 @@
+{
+  "batting_shot": {
+    "file": "batting_shot.jpg",
+    "title": "File:A batsman making a shot (11147206685).jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:A_batsman_making_a_shot_(11147206685).jpg",
+    "author": "Vikramdeep Sidhu from Jhajjar, India",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0",
+    "bytes": 310877
+  },
+  "slip_cordon": {
+    "file": "slip_cordon.jpg",
+    "title": "File:Cambridge University CC v MCC at Cambridge, England 012.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Cambridge_University_CC_v_MCC_at_Cambridge,_England_012.jpg",
+    "author": "Acabashi",
+    "license": "CC BY-SA 4.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+    "bytes": 556444
+  },
+  "fielding_diagram": {
+    "file": "fielding_diagram.jpg",
+    "title": "File:Cricket fielding positions.png",
+    "page": "https://commons.wikimedia.org/wiki/File:Cricket_fielding_positions.png",
+    "author": "Nichalp",
+    "license": "CC BY-SA 3.0",
+    "license_url": "http://creativecommons.org/licenses/by-sa/3.0/",
+    "bytes": 491918
+  },
+  "scoreboard": {
+    "file": "scoreboard.jpg",
+    "title": "File:Cricket scoreboard - geograph.org.uk - 559794.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Cricket_scoreboard_-_geograph.org.uk_-_559794.jpg",
+    "author": "Thomas Nugent",
+    "license": "CC BY-SA 2.0",
+    "license_url": "https://creativecommons.org/licenses/by-sa/2.0",
+    "bytes": 116004
+  },
+  "bowler_to_batter": {
+    "file": "bowler_to_batter.jpg",
+    "title": "File:Pollock to Hussey.jpg",
+    "page": "https://commons.wikimedia.org/wiki/File:Pollock_to_Hussey.jpg",
+    "author": "Prescott Pym on Flickr",
+    "license": "CC BY 2.0",
+    "license_url": "https://creativecommons.org/licenses/by/2.0",
+    "bytes": 122909
+  }
+}
