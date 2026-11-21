@@ -31,3 +31,6 @@ backend/venv/
 .vercel
 .env*
 !.env.example
+
+# Impeccable design tool working files (local only)
+.impeccable/
