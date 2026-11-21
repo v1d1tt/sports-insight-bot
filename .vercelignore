@@ -1,0 +1,20 @@
+# Files the Vercel CLI must never upload. The CLI ignores .gitignore,
+# so a deploy from a local folder would upload these without this file.
+# (Deploys from GitHub never see them, because they are not in git.)
+
+# Local secrets
+.env
+**/.env
+.env.*
+**/.env.*
+!**/.env.example
+
+# Local tools, caches and build output
+.claude
+**/.venv
+**/node_modules
+**/dist
+**/test-results
+**/playwright-report
+**/.pytest_cache
+**/.ruff_cache

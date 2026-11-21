@@ -5,7 +5,8 @@ A multimodal sports analysis chatbot. This repo is project 1 of the portfolio up
 ## Project rules
 
 - **Git:** commit only under the user's own git identity. No `Co-Authored-By: Claude` line and no mention of Claude in commit messages, PR titles or PR text.
-- **Branch + PR per slice:** each slice works on its own branch (`slice/<NN>-<short-name>`) from an up-to-date `main`. At the end of the slice, after its tests pass: one commit, push the branch, open a PR whose body says `Closes #<ticket>`. CI must be green. The owner reviews and merges; never merge or enable auto-merge without the owner asking. Never push mid-slice, never push to `main` directly.
+- **Branch + PR per slice:** each slice works on its own branch (`slice/<NN>-<short-name>`) from an up-to-date `main`. At the end of the slice, after its tests pass: one commit, push the branch, open a PR whose body says `Closes #<ticket>`. Never push mid-slice, never push to `main` directly.
+- **Merging (merge rights granted by the owner on 2026-11-21):** the agent turns on auto-merge for each slice PR with `gh pr merge <n> --auto --merge --delete-branch`. The PR merges itself with a merge commit when the required CI check ("Lint and test") is green; branch protection on `main` enforces that check. Merged branches are deleted: GitHub deletes the remote branch, and the agent deletes the local branch and fast-forwards local `main`.
 - **README:** update `README.md` in the same commit as each slice, so it always matches the code.
 - **Docs first:** look up every library and platform API in Context7 before writing code for it.
 - **Learning notes:** each slice adds `docs/learning/<slice-id>.md`.
