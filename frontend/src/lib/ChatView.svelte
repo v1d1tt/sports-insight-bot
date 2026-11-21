@@ -3,6 +3,7 @@
   import IconRefresh from '@tabler/icons-svelte-runes/icons/refresh'
   import { tick } from 'svelte'
   import { fly } from 'svelte/transition'
+  import Board from './Board.svelte'
   import type { ChatSession } from './chat-session.svelte'
   import Composer from './Composer.svelte'
   import type { MessageImage } from './image-prep'
@@ -91,6 +92,9 @@
           {#if message.role === 'analyst'}
             <!-- renderMarkdown() sanitises the HTML (markdown-it + DOMPurify) -->
             <div class="markdown">{@html renderMarkdown(message.text)}</div>
+            {#if message.field}
+              <Board field={message.field} />
+            {/if}
           {:else}
             {#if message.images?.length}
               <div class="images">
@@ -126,13 +130,16 @@
       </div>
     {/if}
 
-    {#if session.draft}
+    {#if session.draft || session.draftField}
       <article class="entry analyst" aria-busy={session.busy}>
         <p class="who"><span class="label">Analyst</span></p>
         <div class="body">
           <div class={['markdown', session.busy && 'writing']}>
             {@html renderMarkdown(session.draft)}
           </div>
+          {#if session.draftField}
+            <Board field={session.draftField} />
+          {/if}
         </div>
       </article>
     {/if}

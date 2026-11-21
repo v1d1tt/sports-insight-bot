@@ -1,4 +1,5 @@
 import { EventSourceParserStream } from 'eventsource-parser/stream'
+import type { FieldPlacement } from './field-placement'
 import type { MessageImage } from './image-prep'
 import { DEFAULT_SPORT_FOCUS, type SportFocus } from './sport-focus'
 
@@ -18,6 +19,8 @@ export type StreamResult =
 export type StreamOptions = {
   /** Called with each new piece of the reply text, in order. */
   onText: (text: string) => void
+  /** Called with a Field placement the server has checked, for the Board. */
+  onFieldPlacement?: (field: FieldPlacement) => void
   /** Abort it to stop the reply (the Stop button). */
   signal?: AbortSignal
   /** The Chat's Sport focus; cricket when not given. */
@@ -53,7 +56,7 @@ const DROPPED: StreamResult = {
 /** Send the recent Messages to the Analyst and stream its reply. */
 export async function streamReply(
   messages: ChatMessage[],
-  { onText, signal, sportFocus = DEFAULT_SPORT_FOCUS }: StreamOptions,
+  { onText, onFieldPlacement, signal, sportFocus = DEFAULT_SPORT_FOCUS }: StreamOptions,
 ): Promise<StreamResult> {
   const body = {
     messages: requestMessages(messages),
@@ -87,6 +90,7 @@ export async function streamReply(
       if (done) break
       const data = JSON.parse(event.data)
       if (event.event === 'text') onText(data.text)
+      else if (event.event === 'field_placement') onFieldPlacement?.(data.field)
       else if (event.event === 'done') return { status: 'done' }
       else if (event.event === 'error') {
         return { status: 'failed', message: data.message, retryable: data.retryable }

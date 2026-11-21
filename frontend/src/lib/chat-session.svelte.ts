@@ -1,5 +1,6 @@
 import { type Chat, type ChatStore, openChatStore, type StoredMessage, sportFocusOf } from './chat-store'
 import { streamReply } from './chat-stream'
+import type { FieldPlacement } from './field-placement'
 import { type MessageImage, prepareImages } from './image-prep'
 import { DEFAULT_SPORT_FOCUS, type SportFocus } from './sport-focus'
 
@@ -26,6 +27,8 @@ export class ChatSession {
   messages = $state.raw<StoredMessage[]>([])
   /** The Analyst's reply text so far, while it streams or after it failed. */
   draft = $state('')
+  /** The Field placement of the reply that is streaming, if it has one yet. */
+  draftField = $state.raw<FieldPlacement | null>(null)
   reply = $state.raw<ReplyState>(IDLE)
   /** True when the browser does not let the page save Chats. */
   storeFailed = $state(false)
@@ -110,7 +113,7 @@ export class ChatSession {
       this.currentChatId = chatId
     }
     this.#clearDraftMessage()
-    await store.addMessage(chatId, 'visitor', message, images)
+    await store.addMessage(chatId, 'visitor', message, { images })
     this.messages = await store.getMessages(chatId)
     this.chats = await store.listChats()
     await this.#reply(chatId)
@@ -146,10 +149,12 @@ export class ChatSession {
     const stop = new AbortController()
     this.#stop = stop
     this.draft = ''
+    this.draftField = null
     this.reply = { status: 'thinking' }
     const isOpen = () => this.currentChatId === chatId
 
     let text = ''
+    let field: FieldPlacement | undefined
     const history = this.messages.map(({ role, text, images }) => ({ role, text, images }))
     const result = await streamReply(history, {
       signal: stop.signal,
@@ -161,12 +166,19 @@ export class ChatSession {
           this.reply = { status: 'streaming' }
         }
       },
+      onFieldPlacement: (placement) => {
+        field = placement
+        if (isOpen()) {
+          this.draftField = placement
+          this.reply = { status: 'streaming' }
+        }
+      },
     })
     if (this.#stop === stop) this.#stop = null
 
     // Save what the Visitor saw: the whole reply, or the part before Stop.
-    if ((result.status === 'done' || result.status === 'stopped') && text) {
-      await store.addMessage(chatId, 'analyst', text)
+    if ((result.status === 'done' || result.status === 'stopped') && (text || field)) {
+      await store.addMessage(chatId, 'analyst', text, { field })
       this.chats = await store.listChats()
       if (isOpen()) this.messages = await store.getMessages(chatId)
     }
@@ -188,6 +200,7 @@ export class ChatSession {
 
   #clearReply() {
     this.draft = ''
+    this.draftField = null
     this.reply = IDLE
   }
 }
