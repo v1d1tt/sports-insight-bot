@@ -170,7 +170,7 @@ def test_an_unexpected_server_failure_still_ends_the_stream_with_an_error(
     chat: Chat,
 ):
     class BrokenProvider(FakeProvider):
-        async def stream_reply(self, messages):
+        async def stream_reply(self, messages, tools=None, tool_choice="auto"):
             yield "Half a "
             raise RuntimeError("bug in our code")
 

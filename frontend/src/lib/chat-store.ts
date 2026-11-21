@@ -1,4 +1,5 @@
 import { type DBSchema, openDB } from 'idb'
+import type { FieldPlacement } from './field-placement'
 import type { MessageImage } from './image-prep'
 import { DEFAULT_SPORT_FOCUS, type SportFocus } from './sport-focus'
 
@@ -23,8 +24,13 @@ export interface StoredMessage {
   text: string
   /** Visitor Messages only; already resized by Image prep. */
   images?: MessageImage[]
+  /** Analyst Messages only: the Field placement shown on the Board. */
+  field?: FieldPlacement
   createdAt: number
 }
+
+/** What a Message can hold besides its text. */
+export type MessageExtras = { images?: MessageImage[]; field?: FieldPlacement }
 
 export interface ChatStore {
   /** Create an empty Chat titled "New Chat" (cricket unless a Sport focus is given). */
@@ -38,7 +44,7 @@ export interface ChatStore {
   /** A Chat's Messages, oldest first. */
   getMessages(chatId: string): Promise<StoredMessage[]>
   /** Add a Message. The first Visitor Message also becomes the Chat's title. */
-  addMessage(chatId: string, role: Role, text: string, images?: MessageImage[]): Promise<StoredMessage>
+  addMessage(chatId: string, role: Role, text: string, extras?: MessageExtras): Promise<StoredMessage>
 }
 
 export const DEFAULT_TITLE = 'New Chat'
@@ -112,10 +118,17 @@ export async function openChatStore(name = 'sports-insight-bot'): Promise<ChatSt
       return db.getAllFromIndex('messages', 'by-chat', chatId)
     },
 
-    async addMessage(chatId, role, text, images) {
+    async addMessage(chatId, role, text, { images, field } = {}) {
       const time = now()
       const tx = db.transaction(['chats', 'messages'], 'readwrite')
-      const newMessage = { chatId, role, text, createdAt: time, ...(images?.length ? { images } : {}) }
+      const newMessage = {
+        chatId,
+        role,
+        text,
+        createdAt: time,
+        ...(images?.length ? { images } : {}),
+        ...(field ? { field } : {}),
+      }
       // The store adds the id (autoIncrement), so the new record has none yet.
       const id = await tx.objectStore('messages').add(newMessage as StoredMessage)
       const chat = await tx.objectStore('chats').get(chatId)

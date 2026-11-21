@@ -86,7 +86,7 @@ const png = { mediaType: 'image/png', data: 'iVBORw0K' } as const
 
 test('a Message keeps its images, also after the store opens again', async () => {
   const chat = await store.createChat()
-  await store.addMessage(chat.id, 'visitor', 'What field is this?', [png])
+  await store.addMessage(chat.id, 'visitor', 'What field is this?', { images: [png] })
 
   const reopened = await openChatStore(name)
 
@@ -97,8 +97,8 @@ test('a Message keeps its images, also after the store opens again', async () =>
 test('a first Message with only images gets a title that says so', async () => {
   const one = await store.createChat()
   const two = await store.createChat()
-  await store.addMessage(one.id, 'visitor', '', [png])
-  await store.addMessage(two.id, 'visitor', '', [png, png])
+  await store.addMessage(one.id, 'visitor', '', { images: [png] })
+  await store.addMessage(two.id, 'visitor', '', { images: [png, png] })
 
   const titles = (await store.listChats()).map((chat) => chat.title)
   expect(titles).toEqual(['2 images', 'Image'])
@@ -117,4 +117,21 @@ test('each Chat keeps its own Sport focus; cricket by default', async () => {
     sport: 'football',
     team: 'Arsenal',
   })
+})
+
+test('an Analyst Message keeps its Field placement, also after the store opens again', async () => {
+  const chat = await store.createChat()
+  const field = {
+    format: 'ODI',
+    phase: 'middle',
+    bowler_type: 'off-spin',
+    batter_hand: 'left',
+    fielders: [{ position: 'bowler', x: 0, y: -0.2 }],
+  } as const
+  await store.addMessage(chat.id, 'analyst', 'Here is the field.', { field: { ...field, fielders: [...field.fielders] } })
+
+  const reopened = await openChatStore(name)
+
+  const [message] = await reopened.getMessages(chat.id)
+  expect(message.field).toEqual(field)
 })

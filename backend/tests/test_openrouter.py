@@ -11,7 +11,7 @@ import httpx2
 import pytest
 from pydantic import SecretStr
 
-from app.model_provider import ProviderError
+from app.model_provider import ProviderError, ToolCall
 from app.openrouter import OpenRouterProvider
 
 pytestmark = pytest.mark.anyio
@@ -120,3 +120,58 @@ async def test_network_failures_become_provider_errors(failure, code):
         await collect(provider_answering(handler))
 
     assert raised.value.code == code
+
+
+def tool_delta(index: int, arguments: str, **first: str) -> str:
+    """A chunk with a piece of a tool call (OpenAI-style streamed tool calls).
+
+    The first chunk of a call carries its id and name; later chunks only
+    carry more of the JSON arguments.
+    """
+    call: dict = {"index": index, "function": {"arguments": arguments}}
+    if first:
+        call |= {"id": first["id"], "type": "function"}
+        call["function"]["name"] = first["name"]
+    return "data: " + json.dumps(
+        {"choices": [{"index": 0, "delta": {"tool_calls": [call]}}]}
+    )
+
+
+async def test_a_streamed_tool_call_is_joined_and_yielded_after_the_text():
+    sent: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        sent.append(request)
+        return sse(
+            chunk("Here is the field. "),
+            tool_delta(0, '{"format": ', id="call_1", name="show_field_placement"),
+            tool_delta(0, '"T20"}'),
+            'data: {"choices": [{"index": 0, "delta": {}, '
+            '"finish_reason": "tool_calls"}]}',
+            "data: [DONE]",
+        )
+
+    tool = {"type": "function", "function": {"name": "show_field_placement"}}
+    provider = provider_answering(handler)
+    pieces = [p async for p in provider.stream_reply(QUESTION, [tool], "none")]
+
+    assert pieces == [
+        "Here is the field. ",
+        ToolCall("call_1", "show_field_placement", '{"format": "T20"}'),
+    ]
+    body = json.loads(sent[0].content)
+    assert body["tools"] == [tool]
+    assert body["tool_choice"] == "none"
+
+
+async def test_without_tools_the_request_has_no_tool_fields():
+    sent: list[httpx2.Request] = []
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        sent.append(request)
+        return sse(chunk("OK."), "data: [DONE]")
+
+    await collect(provider_answering(handler))
+
+    body = json.loads(sent[0].content)
+    assert "tools" not in body and "tool_choice" not in body

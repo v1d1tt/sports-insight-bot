@@ -197,3 +197,24 @@ test('HTTP 413 (body too large) is a clear failure that Retry cannot fix', async
     retryable: false,
   })
 })
+
+test('a field_placement event reaches onFieldPlacement between the text pieces', async () => {
+  const field = { format: 'T20', phase: 'powerplay', bowler_type: 'right-arm fast', batter_hand: 'right', fielders: [] }
+  mockFetch(() =>
+    sseResponse([
+      'event: text\ndata: {"text": "Two slips. "}\n\n',
+      `event: field_placement\ndata: ${JSON.stringify({ field })}\n\n`,
+      'event: text\ndata: {"text": "Fine leg back."}\n\n',
+      'event: done\ndata: {}\n\n',
+    ]),
+  )
+  const seen: unknown[] = []
+
+  const result = await streamReply(question, {
+    onText: (text) => seen.push(text),
+    onFieldPlacement: (placement) => seen.push(placement),
+  })
+
+  expect(result).toEqual({ status: 'done' })
+  expect(seen).toEqual(['Two slips. ', field, 'Fine leg back.'])
+})

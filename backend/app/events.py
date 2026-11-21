@@ -1,13 +1,15 @@
 """The events the Analyst sends to the page, one server-sent event each.
 
 The `type` field becomes the SSE event name; the other fields become the JSON data.
-A reply is zero or more `text` events, then exactly one `done` or `error`.
-Later slices add more event types (for example `field_placement` and `blocked`).
+A reply is zero or more `text` events and at most one `field_placement` event,
+then exactly one `done` or `error`. A later slice adds `blocked`.
 """
 
 from typing import Literal
 
 from pydantic import BaseModel
+
+from app.fielding import FieldPlacement
 
 
 class TextEvent(BaseModel):
@@ -15,6 +17,13 @@ class TextEvent(BaseModel):
 
     type: Literal["text"] = "text"
     text: str
+
+
+class FieldPlacementEvent(BaseModel):
+    """A Field placement that passed the Fielding restrictions, for the Board."""
+
+    type: Literal["field_placement"] = "field_placement"
+    field: FieldPlacement
 
 
 class ErrorEvent(BaseModel):
@@ -32,4 +41,4 @@ class DoneEvent(BaseModel):
     type: Literal["done"] = "done"
 
 
-AnalystEvent = TextEvent | ErrorEvent | DoneEvent
+AnalystEvent = TextEvent | FieldPlacementEvent | ErrorEvent | DoneEvent

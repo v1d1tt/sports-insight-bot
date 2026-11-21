@@ -1,0 +1,88 @@
+{
+  "about": "Fielding restrictions: the one source for the server and the browser (docs/adr/0003). Coordinates: the Ground is a circle of radius 1 at (0, 0); the striker stands at (0, 0.1) facing the bowler at (0, -0.15); for a right-handed batter the off side is x < 0 (mirrored for a left-hander).",
+  "ground_radius": 1,
+  "circle_radius": 0.43,
+  "striker": { "x": 0, "y": 0.1 },
+  "not_counted": ["bowler", "wicketkeeper"],
+  "max_behind_square_leg_side": 2,
+  "max_outside_circle": {
+    "T20": { "powerplay": 2, "middle": 5, "death": 5 },
+    "ODI": { "powerplay": 2, "middle": 4, "death": 5 },
+    "Test": { "powerplay": null, "middle": null, "death": null }
+  },
+  "phase_overs": {
+    "T20": { "powerplay": "1-6", "middle": "7-15", "death": "16-20" },
+    "ODI": { "powerplay": "1-10", "middle": "11-40", "death": "41-50" },
+    "Test": { "powerplay": "-", "middle": "-", "death": "-" }
+  },
+  "positions": [
+    "wicketkeeper", "bowler", "first slip", "second slip", "third slip", "fourth slip", "gully", "leg slip",
+    "short leg", "silly point", "silly mid-off", "silly mid-on", "point", "backward point", "cover point",
+    "cover", "extra cover", "mid-off", "mid-on", "mid-wicket", "square leg", "backward square leg",
+    "short fine leg", "fine leg", "deep fine leg", "third man", "short third man", "deep third man",
+    "deep point", "deep backward point", "deep cover", "deep extra cover", "long off", "long on",
+    "deep mid-wicket", "deep square leg", "deep backward square leg", "short cover", "short mid-wicket"
+  ],
+  "off_side_positions": [
+    "first slip", "second slip", "third slip", "fourth slip", "gully", "silly point", "silly mid-off", "point", "backward point", "cover point", "cover", "extra cover", "third man", "short third man", "deep third man", "deep point", "deep backward point", "deep cover", "deep extra cover", "short cover"
+  ],
+  "leg_side_positions": [
+    "leg slip", "short leg", "silly mid-on", "mid-wicket", "square leg", "backward square leg", "short fine leg", "fine leg", "deep fine leg", "deep mid-wicket", "deep square leg", "deep backward square leg", "short mid-wicket"
+  ],
+  "standard_spots_right_hander": {
+    "wicketkeeper": { "x": 0, "y": 0.3 },
+    "bowler": { "x": 0.04, "y": -0.22 },
+    "first slip": { "x": -0.07, "y": 0.31 },
+    "second slip": { "x": -0.13, "y": 0.3 },
+    "third slip": { "x": -0.19, "y": 0.28 },
+    "fourth slip": { "x": -0.25, "y": 0.26 },
+    "gully": { "x": -0.3, "y": 0.2 },
+    "leg slip": { "x": 0.08, "y": 0.3 },
+    "short leg": { "x": 0.15, "y": 0.1 },
+    "silly point": { "x": -0.15, "y": 0.08 },
+    "silly mid-off": { "x": -0.1, "y": -0.05 },
+    "silly mid-on": { "x": 0.1, "y": -0.05 },
+    "point": { "x": -0.38, "y": 0.08 },
+    "backward point": { "x": -0.36, "y": 0.2 },
+    "cover point": { "x": -0.37, "y": -0.06 },
+    "cover": { "x": -0.33, "y": -0.18 },
+    "extra cover": { "x": -0.25, "y": -0.3 },
+    "mid-off": { "x": -0.13, "y": -0.38 },
+    "mid-on": { "x": 0.13, "y": -0.38 },
+    "mid-wicket": { "x": 0.33, "y": -0.18 },
+    "square leg": { "x": 0.38, "y": 0.08 },
+    "backward square leg": { "x": 0.36, "y": 0.2 },
+    "short fine leg": { "x": 0.2, "y": 0.33 },
+    "fine leg": { "x": 0.3, "y": 0.75 },
+    "deep fine leg": { "x": 0.3, "y": 0.9 },
+    "third man": { "x": -0.35, "y": 0.8 },
+    "short third man": { "x": -0.2, "y": 0.35 },
+    "deep third man": { "x": -0.3, "y": 0.9 },
+    "deep point": { "x": -0.92, "y": 0.1 },
+    "deep backward point": { "x": -0.85, "y": 0.4 },
+    "deep cover": { "x": -0.75, "y": -0.5 },
+    "deep extra cover": { "x": -0.55, "y": -0.75 },
+    "long off": { "x": -0.3, "y": -0.9 },
+    "long on": { "x": 0.3, "y": -0.9 },
+    "deep mid-wicket": { "x": 0.75, "y": -0.5 },
+    "deep square leg": { "x": 0.92, "y": 0.1 },
+    "deep backward square leg": { "x": 0.85, "y": 0.4 },
+    "short cover": { "x": -0.22, "y": -0.15 },
+    "short mid-wicket": { "x": 0.22, "y": -0.15 }
+  },
+  "inner_position_for": {
+    "deep cover": "cover",
+    "deep point": "point",
+    "deep extra cover": "extra cover",
+    "deep backward point": "backward point",
+    "deep mid-wicket": "mid-wicket",
+    "deep square leg": "square leg",
+    "deep backward square leg": "backward square leg",
+    "long off": "mid-off",
+    "long on": "mid-on",
+    "third man": "short third man",
+    "deep third man": "short third man",
+    "fine leg": "short fine leg",
+    "deep fine leg": "short fine leg"
+  }
+}

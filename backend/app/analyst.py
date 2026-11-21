@@ -12,19 +12,47 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.events import AnalystEvent, DoneEvent, ErrorEvent, TextEvent
+from app.events import (
+    AnalystEvent,
+    DoneEvent,
+    ErrorEvent,
+    FieldPlacementEvent,
+    TextEvent,
+)
+from app.fielding import SHOW_FIELD_PLACEMENT, read_field_placement
 from app.model_provider import (
     ImagePart,
     ModelProvider,
     ProviderError,
     ProviderMessage,
     TextPart,
+    Tool,
+    ToolCall,
 )
 
 logger = logging.getLogger(__name__)
 
 # Each request sends at most this many recent Messages to the model.
 MAX_HISTORY = 20
+
+# A bad Field placement goes back to the model for one repair, no more.
+MAX_REPAIRS = 1
+
+# What the server tells the model after its show_field_placement call.
+FIELD_SHOWN = (
+    "The Field placement is now on the Board under your reply. Explain the plan "
+    "in text now. Do not list coordinates."
+)
+FIELD_REPAIR = (
+    "The Field placement was NOT shown, because:\n{problems}\n"
+    "Fix these problems and call show_field_placement again."
+)
+# After a second bad field, the model answers again from the start, without
+# tools and without its failed attempts, with this note added to its rules.
+FIELD_FAILED = (
+    "\nFor this reply, answer in text only: name the Fielding positions in "
+    "words. Do not mention the Board, tools or drawing.\n"
+)
 
 SYSTEM_PROMPT = """\
 You are the Analyst in Sports Insight Bot: a sports analyst who explains \
@@ -137,6 +165,13 @@ def _sport_focus_rules(focus: SportFocus) -> str:
         lines.append(f"Team: {json.dumps(focus.team)} (typed by the Visitor)")
     if focus.sport == "cricket":
         lines.append("Frame your answers for cricket, with full tactical depth.")
+        lines.append(
+            "You have a tool, show_field_placement, that draws a Field placement "
+            "on the Board. When the Visitor asks for a field, or a field makes "
+            "your answer clearer, call the tool once BEFORE you write your answer, "
+            "then explain the plan in text. Never write the field as JSON, code or "
+            "a function call in your text: only the tool can show it."
+        )
     elif focus.sport == "other":
         lines.append(
             "The Visitor has not named the sport: work it out from the question. "
@@ -191,18 +226,64 @@ async def stream_reply(
 ) -> AsyncIterator[AnalystEvent]:
     """Stream the Analyst's reply to the last Message.
 
-    Yields text events, then exactly one done or error event.
+    Yields text events and at most one field_placement event, then exactly one
+    done or error event. For cricket the model may call show_field_placement:
+    a field that breaks a rule goes back to the model for one repair; if it
+    fails again, the reply is text only.
     """
-    sent_text = False
+    focus = sport_focus or SportFocus()
+    prompt = build_prompt(messages, focus)
+    tools: list[Tool] | None = (
+        [SHOW_FIELD_PLACEMENT] if focus.sport == "cricket" else None
+    )
+    tool_choice: Literal["auto", "none"] = "auto"
+    repairs_left = MAX_REPAIRS
+    sent_anything = False
     try:
-        # aclosing() closes the provider's stream as soon as this generator stops,
-        # for example when the Visitor presses Stop and the connection drops.
-        async with aclosing(
-            provider.stream_reply(build_prompt(messages, sport_focus or SportFocus()))
-        ) as pieces:
-            async for piece in pieces:
-                sent_text = True
-                yield TextEvent(text=piece)
+        # At most 3 model calls: field → repaired field → text after the tool result.
+        for _ in range(2 + MAX_REPAIRS):
+            text = ""
+            call: ToolCall | None = None
+            # aclosing() closes the provider's stream as soon as this generator
+            # stops, for example when the Visitor presses Stop.
+            async with aclosing(
+                provider.stream_reply(prompt, tools, tool_choice)
+            ) as pieces:
+                async for piece in pieces:
+                    if isinstance(piece, ToolCall):
+                        # Only the first call counts; with "none", none do.
+                        if tools and tool_choice == "auto" and call is None:
+                            call = piece
+                        continue
+                    text += piece
+                    sent_anything = True
+                    yield TextEvent(text=piece)
+            if call is None:
+                break
+
+            field, problems = read_field_placement(call.arguments)
+            if field is not None:
+                yield FieldPlacementEvent(field=field)
+                sent_anything = True
+                result, tool_choice = FIELD_SHOWN, "none"
+            elif repairs_left > 0:
+                repairs_left -= 1
+                logger.info("Field placement sent back for repair: %s", problems)
+                result = FIELD_REPAIR.format(problems="\n".join(problems))
+            else:
+                logger.info("Field placement failed twice: %s", problems)
+                prompt = build_prompt(messages, focus)
+                prompt[0]["content"] += FIELD_FAILED
+                tools = None
+                continue
+            prompt += [
+                {
+                    "role": "assistant",
+                    "content": text or None,
+                    "tool_calls": [call.as_message()],
+                },
+                {"role": "tool", "tool_call_id": call.id, "content": result},
+            ]
     except ProviderError as error:
         logger.warning("Model provider error %s: %s", error.code, error.detail)
         yield error_for(error.code)
@@ -217,7 +298,7 @@ async def stream_reply(
             retryable=True,
         )
         return
-    if not sent_text:
+    if not sent_anything:
         yield ErrorEvent(
             code="empty_reply",
             message="The Analyst sent an empty reply. Please try again.",
