@@ -1,37 +1,38 @@
 # Sports Insight Bot
 
-A cricket-first sports Analyst you chat with. You ask about a match, a tactic or a screenshot, and the Analyst explains it. For cricket it will also draw its answer on an interactive Ground (field placements and wagon wheels).
+**A cricket-first sports Analyst you chat with, which draws its answers on an interactive cricket Ground.** Ask about a match, a tactic or a screenshot; ask for a field and you get a checked Field placement you can drag around, with the Fielding restrictions checked live.
 
-**Status (Nov 2026): rebuild in progress.** The app is being rebuilt in 10 vertical slices. Slices 01 (walking skeleton), 02 (streaming chat), 03 (images and Sport focus), 04 (UI direction and voice input) and 05 (Field placement on the Board), 06 (interactive Board), 07 (Wagon wheel), 08 (input guard) and 09 (quality pass: explicit state machines, architecture and review) are done: you can chat with the Analyst by typing or speaking, show it up to 4 images per Message, pick the sport the Chat is about, and the reply streams in word by word as formatted text. Ask for a cricket field and the Analyst draws it on a Ground under its reply, checked against the Fielding restrictions. Then play with it: drag fielders (mouse, touch or keyboard), flip the Batter hand, change the Format and Phase, watch the live rule warnings, and ask the Analyst about your field. You can also record a batter's innings as a Wagon wheel (tap where each Shot went, pick the runs) and ask the Analyst to read it. Your Chats, with their images, are saved in your own browser.
+[![CI](https://github.com/v1d1tt/sports-insight-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/v1d1tt/sports-insight-bot/actions/workflows/ci.yml)
 
-**Live:** https://sports-insight-bot.vercel.app
+**Live:** https://sports-insight-bot.vercel.app (no sign-up; your Chats stay in your own browser)
 
-![Sports Insight Bot: a Chat in the "Scorer's book" design](docs/screenshots/desktop.png)
+## Demo
 
-| Phone | Dark mode |
-|---|---|
-| <img src="docs/screenshots/phone.png" alt="The app at phone width" width="260"> | <img src="docs/screenshots/desktop-dark.png" alt="The app in dark mode" width="520"> |
+[![Demo video (25 s): streaming chat, a scorecard image, a Field placement with a drag and a rule warning, a Wagon wheel, phone width](docs/demo/sports-insight-bot-demo.jpg)](docs/demo/sports-insight-bot-demo.mp4)
 
-### Try the Board
+Click the picture to play the 25-second demo ([MP4, 3.5 MB](docs/demo/sports-insight-bot-demo.mp4)). Everything in it is the live production site, recorded with Playwright; the only change is speed.
 
-Open the [live app](https://sports-insight-bot.vercel.app), ask "Set a T20 powerplay field for a fast bowler", then drag a fielder out to the boundary. The Board renames the fielder to the nearest Fielding position as it moves, warns the moment the field breaks a Fielding restriction, and "Ask the Analyst about this field" gets a comment on your exact field.
+| Drag a fielder: the rule check is live | Tap in a Wagon wheel | Phone width |
+|---|---|---|
+| <img src="docs/screenshots/board-interactive.png" alt="The interactive Board: point dragged out to deep point, with the warning that a T20 powerplay allows at most 2 fielders outside the 30-yard circle" width="300"> | <img src="docs/screenshots/wagon-wheel.png" alt="A Wagon wheel at phone width: 19 runs off 7 Shots, strongest through cover, with run totals by area" width="230"> | <img src="docs/screenshots/phone.png" alt="The app at phone width" width="200"> |
 
-<img src="docs/screenshots/board-interactive.png" alt="The interactive Board: point dragged out to deep point, with the warning that a T20 powerplay allows at most 2 fielders outside the 30-yard circle" width="420">
+### Try it in 30 seconds
 
-### Try the Wagon wheel
+1. Open the [live app](https://sports-insight-bot.vercel.app) and press "Set a field for a leg-spinner on a turning pitch", or ask "Set a T20 powerplay field for a fast bowler".
+2. Drag a fielder from inside the 30-yard circle out to the boundary. The fielder takes the nearest Fielding position's name, and the Board warns the moment the field breaks a rule.
+3. Press "Ask the Analyst about this field" for a comment on your exact field.
+4. Press the aperture button in the Message box ("Add a Wagon wheel"), tap where each Shot went, pick the runs, then ask the Analyst to read it.
 
-Press the aperture button in the Message box ("Add a Wagon wheel"), tap where each Shot went and pick the runs. The totals by area update as you go. Then press "Ask the Analyst about this Wagon wheel" for the batter's scoring areas, strengths and weaknesses.
+## Why it exists
 
-<img src="docs/screenshots/wagon-wheel.png" alt="A Wagon wheel at phone width: 19 runs off 7 Shots, strongest through cover, with run totals by area" width="320">
+The old version (vanilla HTML/JS with a FastAPI server on Render, from January 2026) stopped working when its model lost all providers on OpenRouter. This repo is the full rebuild: a [PRD](docs/PRD.md), a [6-model test](docs/model-eval/README.md) to pick the model, then 10 vertical slices, each one pull request with its own [learning note](docs/learning). The old deploys are retired; this is the only live version.
 
-The old version (vanilla HTML/JS and a FastAPI server, deployed from two other repos) stopped working when its model lost all providers on OpenRouter. This repo replaces it.
-
-## What works now
+## Features
 
 | Part | What it does |
 |---|---|
 | Look | "Scorer's book", chosen by the owner from four options: the Chat is a ruled scorebook page, the Analyst writes in pencil grey and the Visitor in ballpoint blue, red only for errors. Condensed athletic capitals (Big Shoulders Display) for labels and numbers, Public Sans for text. Light and dark mode follow the device. Motion (page settle, rolling numbers, a dot-ball "thinking" over, a pencil caret while streaming) turns off with the system's reduce-motion setting. Details: [docs/learning/04-ui-and-voice.md](docs/learning/04-ui-and-voice.md). |
-| Layout | Desktop: the Chat list is a rail on the left, the Chat fills the rest (the Board will dock on the right). Phone (from 375 px, touch): the Chat fills the screen and the Chat list opens as a drawer from the header. No sideways scroll; every control has a label and a visible focus ring. |
+| Layout | Desktop: the Chat list is a rail on the left, the Chat fills the rest, and each Board sits in the Chat under the Message it belongs to. Phone (from 375 px, touch): the Chat fills the screen and the Chat list opens as a drawer from the header. No sideways scroll; every control has a label and a visible focus ring. |
 | Board | Ask for a cricket field ("set a T20 powerplay field for a quick to a left-hander") and the Analyst draws its Field placement on a Ground under its reply: eleven labelled fielders, the 30-yard circle, the Pitch, the off and leg sides, and how many fielders stand outside the circle. The model can show a field only through the `show_field_placement` tool, which is offered only when the Sport focus is cricket. The server checks every field: shape (11 fielders, one bowler, one wicketkeeper, known Fielding position names, inside the Ground), the Fielding restrictions for its Format and Phase, and that each fielder stands on the side its name says. A bad field goes back to the model once with the reasons; if the repair also fails, the reply is text only. Fields are saved with the Chat and redrawn after a reload. Details: [docs/learning/05-field-placement.md](docs/learning/05-field-placement.md). |
 | Interactive Board | Drag any fielder except the bowler and wicketkeeper with the mouse or a finger (the page does not scroll while you drag), or Tab to a fielder and use the arrow keys (Shift for bigger steps). While it moves, the fielder takes the name of the nearest free Fielding position. "Right-hander" / "Left-hander" mirrors every fielder. Format and Phase pickers set which Fielding restrictions apply. Live warnings under the Ground say which rule the field breaks (too many outside the 30-yard circle, too many behind square on the leg side), and those fielders turn red; the browser's check reads the same data file and passes the same test cases as the server's. Every change is saved with the Chat. "Ask the Analyst about this field" sends the field as it stands; the server checks it again and puts it, with the rules it breaks and the limits, into the prompt, so the Analyst names a broken rule first and never suggests an illegal change. Details: [docs/learning/06-interactive-board.md](docs/learning/06-interactive-board.md). |
 | Wagon wheel | "Add a Wagon wheel" (cricket only) puts an empty Wagon wheel in the Chat. Tap or click where the ball went, then pick 1, 2, 3, 4 or 6; each Shot is drawn as a line from the Pitch. With the keyboard: Tab to the Ground, aim with the arrow keys, Enter, then pick the runs. "Undo last Shot" and the "Shots" list remove Shots; "Right-hander" / "Left-hander" mirrors them. Run totals for eight areas (third man, point, cover, long off, long on, midwicket, square leg, fine leg) show on the Ground and in a table. Every change is saved with the Chat. "Ask the Analyst about this Wagon wheel" sends the Shots as Board state; the server checks them (runs 1/2/3/4/6, on the Ground, at most 300), counts the totals by area itself and puts them in the prompt. Details: [docs/learning/07-wagon-wheel.md](docs/learning/07-wagon-wheel.md). |
@@ -40,12 +41,21 @@ The old version (vanilla HTML/JS and a FastAPI server, deployed from two other r
 | Images | Attach, paste or drop up to 4 JPEG, PNG or WebP images per Message, with a preview and a Remove button for each. The browser shrinks each image to 1600 px on the long side (smaller if it is still over 700 KB) and keeps its real type, so a 14 MB phone photo goes out in under 1 MB. A note by the button says images go to the model provider. Images are saved with the Chat. In the prompt, text read from images is labelled as untrusted data. |
 | Sport focus | Pick cricket (default), football, basketball, tennis or Other, and optionally a team. Each Chat keeps its own Sport focus and sends it with every request; it changes how the Analyst frames its answers. Non-cricket sports get text answers only. |
 | Chats | Start a new Chat without a reload, see your Chats (titled from their first Message), open, rename and delete them. They live in your browser's IndexedDB, survive a reload, and no other Visitor can see them. |
+| API | `POST /api/chat` takes `messages` (each `{role, text, images?}`, an image is `{media_type, data}` in base64) `sport_focus` (`{sport, team}`) and an optional `board`: exactly one of `{field}` (the Field placement the Visitor asks about) or `{wheel}` (a Wagon wheel: `batter_hand` and `shots`), checked like a tool call, 422 if badly shaped, and streams server-sent events: `text`, at most one `field_placement` (`{field}`: a checked Field placement), then `done` or `error` (`code`, `message`, `retryable`). A request the input guard refuses gets one `error` or one `blocked` (`{reason}`) event and nothing else. `GET /api/health` returns `{"status": "ok", "model": "<model ID>"}`. The model ID comes from `OPENROUTER_MODEL` (default `google/gemma-4-26b-a4b-it`). |
+| Robustness | Each flow is one explicit state machine with its transitions written above its type: the reply (`ReplyState`), the Chat list (loading, ready, failed), image prep, voice input (`VoiceState`), the Board drag and Wagon wheel Shot entry. A quick second Enter cannot send twice, a browser that cannot save a Chat ends in a clear message instead of a stuck "thinking" line, two quick pastes still keep the 4-image limit, and words heard after Send do not come back into the Message box. State diagrams: [docs/learning/09-quality-pass.md](docs/learning/09-quality-pass.md). |
+| CI | Every push and pull request runs ruff, pytest, svelte-check, Vitest and Playwright. `main` only accepts pull requests with a green check. |
+
+## Limits and safety
+
+The model key is paid, so the app limits what one Visitor can spend and treats every input as untrusted.
+
+| Part | What it does |
+|---|---|
 | Limits | Each request sends only the last 20 Messages (the server trims again), and only the newest Message with images carries them. The server refuses a Visitor Message over 2,000 characters, more than 4 images in a Message, an image over 1 MB and an image that is not the type it claims (each a clear `error` event, before any model call), and a body over 4.5 MB (HTTP 413, like Vercel; the page shows "This Message is too large to send"). On HTTP 429 from the Vercel firewall the page says "Limit reached … try again after HH:MM". |
 | Security | Two layers against prompt injection (details: [docs/learning/08-input-guard.md](docs/learning/08-input-guard.md)). **Layer 1, structure (always):** text in images is labelled as untrusted data in the prompt and in the system rules; the Analyst has only the Board tools, and the server checks every tool call before anything reaches the page. **Layer 2, the screen:** before the main model call, `openai/gpt-oss-safeguard-20b` checks the input against a written policy ([backend/app/injection_policy.md](backend/app/injection_policy.md)). To keep the cost low it runs only for Messages with images (the main model first copies out the text in them, because the screen model reads text only), Visitor Messages over 400 characters, and Messages that use words such as "instructions", "system prompt" or "you are now". A flagged request gets a `blocked` event: the page shows a polite reason and an **Edit Message** button, and takes the blocked Message out of the Chat so a follow-up does not send it again. If the screen fails (timeout, provider error, odd answer), the request fails closed with a retryable `screen_unavailable` error. |
-| API | `POST /api/chat` takes `messages` (each `{role, text, images?}`, an image is `{media_type, data}` in base64) `sport_focus` (`{sport, team}`) and an optional `board` (`{field}`: the Field placement the Visitor asks about; checked like a tool call, 422 if badly shaped), and streams server-sent events: `text`, at most one `field_placement` (`{field}`: a checked Field placement), then `done` or `error` (`code`, `message`, `retryable`). A request the input guard refuses gets one `error` or one `blocked` (`{reason}`) event and nothing else. `GET /api/health` returns `{"status": "ok", "model": "<model ID>"}`. The model ID comes from `OPENROUTER_MODEL` (default `google/gemma-4-26b-a4b-it`). |
-| Robustness | Each flow is one explicit state machine with its transitions written above its type: the reply (`ReplyState`), the Chat list (loading, ready, failed), image prep, voice input (`VoiceState`), the Board drag and Wagon wheel Shot entry. A quick second Enter cannot send twice, a browser that cannot save a Chat ends in a clear message instead of a stuck "thinking" line, two quick pastes still keep the 4-image limit, and words heard after Send do not come back into the Message box. State diagrams: [docs/learning/09-quality-pass.md](docs/learning/09-quality-pass.md). |
 | Headers | Every response carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (no camera or location; microphone for this site only) and a CSP that forbids framing the site (`frame-ancestors 'none'`). Set in `vercel.json`. |
-| CI | Every push and pull request runs ruff, pytest, svelte-check, Vitest and Playwright. `main` only accepts pull requests with a green check. |
+
+Known limits: the Analyst can still invent details in images (the model test found this; the prompt tells it to say when it is unsure, and the Board never relies on image reading), and the screen model is a classifier, so a new kind of attack can get past it; the structure layer is the backstop.
 
 ## Stack
 
@@ -68,6 +78,41 @@ The old version (vanilla HTML/JS and a FastAPI server, deployed from two other r
 | Injection screen | `openai/gpt-oss-safeguard-20b` on OpenRouter, with a written policy file, behind a small adapter | Built to classify text against a policy you write (the policy is the system message, the answer is `0` or `1`), so the rules are a readable file, not training data. Cheap and fast (about 1 s in the live test). A rule-based filter alone misses rephrased attacks; a second call to the main model is slower and not built for this. |
 | Tests | pytest, Vitest + Testing Library, Playwright | One test layer per part: API, component, whole page in a real browser. |
 | Visual feedback | Vercel Toolbar comments (preview deploys), sv-agentation (local dev only) | The owner leaves notes on the running page, and the coding agent reads and fixes them. |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Browser
+    UI["Svelte page<br/>(ChatSession state machines)"]
+    IDB[("IndexedDB<br/>Chats, images, Boards")]
+    Board["Board: SVG Ground<br/>live Fielding check"]
+    UI --- IDB
+    UI --- Board
+  end
+  subgraph Vercel["One Vercel project, one domain"]
+    FW["Firewall<br/>20 POSTs / 10 min per IP"]
+    API["FastAPI service /api"]
+    Guard["Input guard<br/>limits + injection screen"]
+    Analyst["Analyst<br/>prompt, field tool, one repair"]
+    FW --> API --> Guard --> Analyst
+  end
+  Rules[("restrictions.json<br/>one shared rule file")]
+  OR[("OpenRouter<br/>Gemma 4 + safeguard model")]
+  UI -- "POST /api/chat" --> FW
+  Analyst -. "SSE: text, field_placement, done" .-> UI
+  Guard --> OR
+  Analyst --> OR
+  Rules -.-> Board
+  Rules -.-> Analyst
+```
+
+One request, end to end:
+
+1. The page sends the last 20 Messages, the Sport focus and (when you ask about a Board) the Board state. The server keeps nothing between requests: Chats live only in your browser ([ADR 0001](docs/adr/0001-chats-live-only-in-the-browser.md)).
+2. The Vercel firewall rate-limits the call. The input guard checks sizes and types, and sends risky input to the injection screen.
+3. The Analyst builds the prompt and streams the model's reply back as server-sent events. If the model calls `show_field_placement`, the server checks the field against the same `restrictions.json` the browser uses ([ADR 0003](docs/adr/0003-one-shared-source-for-fielding-restrictions.md)), asks the model once to repair a bad field, and sends only a checked field to the page.
+4. The page draws the field on the Board and saves the Chat to IndexedDB. From then on, dragging and the live rule check run in the browser only; no request is made until you ask the Analyst about the field.
 
 ## Repo layout
 
@@ -110,7 +155,7 @@ backend/                  FastAPI API, served under /api
   tests/                  pytest tests (fake model provider, no network); fielding_cases.json is the shared case table
 vercel.json               Vercel Services: /api/* goes to backend, all else to frontend; security headers
 .github/workflows/ci.yml  CI: lint and tests on every push and pull request
-docs/                     PRD, ADRs, model test, learning notes
+docs/                     PRD, ADRs, model test, learning notes, screenshots, demo video (docs/demo)
 ```
 
 ## Run it locally (fresh clone)
@@ -194,10 +239,24 @@ Vercel builds from GitHub. Each pull request gets a preview URL, and `main` goes
 
 ## Docs
 
-- Plan: [PRD](docs/PRD.md) ([issue #1](https://github.com/v1d1tt/sports-insight-bot/issues/1)), built in tickets #2 to #11
-- Domain terms: [GLOSSARY.md](GLOSSARY.md); decisions: [docs/adr](docs/adr)
-- Model choice: [docs/model-eval](docs/model-eval/README.md)
-- How each slice works: [docs/learning](docs/learning)
+- **Plan:** [PRD](docs/PRD.md) ([issue #1](https://github.com/v1d1tt/sports-insight-bot/issues/1)), built in tickets #2 to #11, one pull request each.
+- **Domain terms:** [GLOSSARY.md](GLOSSARY.md) (Visitor, Analyst, Chat, Board, Field placement, Wagon wheel, ...).
+- **Decisions (ADRs):** [0001 Chats live only in the browser](docs/adr/0001-chats-live-only-in-the-browser.md) · [0002 Vercel for both the page and the API](docs/adr/0002-vercel-for-both-frontend-and-api.md) (and why not the usual default without a reason) · [0003 One shared source for the Fielding restrictions](docs/adr/0003-one-shared-source-for-fielding-restrictions.md)
+- **Model choice:** [docs/model-eval](docs/model-eval/README.md): 6 models, 10 text questions, 5 images, 2 field-JSON tasks, graded by hand, with cost.
+- **Learning notes** (what each slice built, how the code flows, why each library, interview questions):
+
+  | Slice | Note |
+  |---|---|
+  | 01 | [Walking skeleton: Vercel Services, CI](docs/learning/01-walking-skeleton.md) |
+  | 02 | [Streaming chat over server-sent events, the firewall rule](docs/learning/02-streaming-chat.md) |
+  | 03 | [Images and Sport focus](docs/learning/03-images-and-sport-focus.md) |
+  | 04 | [UI direction ("Scorer's book") and voice input](docs/learning/04-ui-and-voice.md) |
+  | 05 | [Field placement: a checked tool call](docs/learning/05-field-placement.md) |
+  | 06 | [Interactive Board: drag, mirror, live rules](docs/learning/06-interactive-board.md) |
+  | 07 | [Wagon wheel](docs/learning/07-wagon-wheel.md) |
+  | 08 | [Input guard and the injection screen](docs/learning/08-input-guard.md) |
+  | 09 | [Quality pass: state machines, architecture, review](docs/learning/09-quality-pass.md) |
+  | 10 | [Launch: README, demo video, old deploys](docs/learning/10-launch.md) |
 
 ## Author
 
