@@ -54,6 +54,8 @@ export interface ChatStore {
   getMessages(chatId: string): Promise<StoredMessage[]>
   /** Add a Message. The first Visitor Message also becomes the Chat's title. */
   addMessage(chatId: string, role: Role, text: string, extras?: MessageExtras): Promise<StoredMessage>
+  /** Delete one Message (a Message the server blocked, so it is never sent again). An empty Chat is "New Chat" again. */
+  deleteMessage(messageId: number): Promise<void>
   /** Save the Field placement of an Analyst Message after the Visitor changed it on the Board. */
   setField(messageId: number, field: FieldPlacement): Promise<void>
   /** Save a Wagon wheel after the Visitor changed it on the Board. */
@@ -153,6 +155,20 @@ export async function openChatStore(name = 'sports-insight-bot'): Promise<ChatSt
       }
       await tx.done
       return { ...newMessage, id }
+    },
+
+    async deleteMessage(messageId) {
+      const tx = db.transaction(['chats', 'messages'], 'readwrite')
+      const messages = tx.objectStore('messages')
+      const message = await messages.get(messageId)
+      if (message) {
+        await messages.delete(messageId)
+        // The first Message gave the Chat its title; without it, the title goes back.
+        const left = await messages.index('by-chat').count(message.chatId)
+        const chat = await tx.objectStore('chats').get(message.chatId)
+        if (chat && left === 0) await tx.objectStore('chats').put({ ...chat, title: DEFAULT_TITLE })
+      }
+      await tx.done
     },
 
     async setField(messageId, field) {

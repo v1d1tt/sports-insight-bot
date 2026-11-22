@@ -88,6 +88,16 @@ test('an error event fails the reply with its message and retry flag', async () 
   })
 })
 
+test('a blocked event ends the reply with the reason to show', async () => {
+  mockFetch(() =>
+    sseResponse(['event: blocked\ndata: {"reason": "Please rephrase it as a plain sports question."}\n\n']),
+  )
+
+  const result = await streamReply(question, { onText: () => {} })
+
+  expect(result).toEqual({ status: 'blocked', reason: 'Please rephrase it as a plain sports question.' })
+})
+
 test('HTTP 429 means rate limited until one hour after the first 429', async () => {
   vi.useFakeTimers({ toFake: ['Date'] })
   vi.setSystemTime(new Date(2026, 10, 21, 14, 40))

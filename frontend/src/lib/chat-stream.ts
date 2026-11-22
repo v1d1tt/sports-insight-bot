@@ -18,6 +18,8 @@ export type StreamResult =
   | { status: 'done' }
   | { status: 'stopped' }
   | { status: 'failed'; message: string; retryable: boolean }
+  /** The server's injection screen refused the request: `reason` is safe to show. */
+  | { status: 'blocked'; reason: string }
   | { status: 'rate-limited'; retryAt: Date }
 
 export type StreamOptions = {
@@ -99,6 +101,7 @@ export async function streamReply(
       if (event.event === 'text') onText(data.text)
       else if (event.event === 'field_placement') onFieldPlacement?.(data.field)
       else if (event.event === 'done') return { status: 'done' }
+      else if (event.event === 'blocked') return { status: 'blocked', reason: data.reason }
       else if (event.event === 'error') {
         return { status: 'failed', message: data.message, retryable: data.retryable }
       }

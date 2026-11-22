@@ -179,7 +179,7 @@ Ground = circle of radius 1 at (0,0); striker at (0, 0.1) facing the bowler at (
 - Vercel firewall rule: 20 POST requests per IP to `/api/chat` in a 10-minute fixed window; over the limit, HTTP 429 for 1 hour (persistent action). Reason: the Hobby plan allows one rate-limit rule, and its window can be at most 10 minutes, so "20 per hour" cannot be set directly. The 1-hour block stops bursts. (Changed in slice 02; the first plan said 20 per hour.)
 - Max 4 images per Message, resized to 1600 px long side in the browser; max 2,000 characters per Visitor Message (earlier Analyst replies sent back as history may be up to 12,000); last 20 Messages sent; the server rejects bodies over its limit with a clear error.
 - Injection defense, layer 1 (always): image-derived text is wrapped and labelled as untrusted data in the prompt; the Analyst has only the Board tools; every tool call is validated.
-- Injection defense, layer 2: `openai/gpt-oss-safeguard-20b` screens image text and long Messages against a written prompt-injection policy before the main model call.
+- Injection defense, layer 2: `openai/gpt-oss-safeguard-20b` screens image text and long Messages against a written prompt-injection policy before the main model call. The screen model reads text only, so the main model first copies out the text in images. A screen failure fails closed with a retryable error (slice 08, see docs/learning/08-input-guard.md).
 - The OpenRouter key has a $5/month credit cap set by the owner.
 
 **Voice**

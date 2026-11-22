@@ -2,7 +2,8 @@
 
 The `type` field becomes the SSE event name; the other fields become the JSON data.
 A reply is zero or more `text` events and at most one `field_placement` event,
-then exactly one `done` or `error`. A later slice adds `blocked`.
+then exactly one `done` or `error`. When the input guard refuses a request, the
+stream is one `error` or one `blocked` event and nothing else.
 """
 
 from typing import Literal
@@ -33,6 +34,13 @@ class ErrorEvent(BaseModel):
     code: str
     message: str
     retryable: bool
+
+
+class BlockedEvent(BaseModel):
+    """The injection screen flagged the request. `reason` is safe to show."""
+
+    type: Literal["blocked"] = "blocked"
+    reason: str
 
 
 class DoneEvent(BaseModel):
