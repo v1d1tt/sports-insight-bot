@@ -264,3 +264,7 @@ Vercel builds from GitHub. Each pull request gets a preview URL, and `main` goes
 ## Author
 
 Vidit Arora, Software Engineering student at DTU. Interests: full-stack development, AI/ML, systems programming.
+
+## License
+
+[MIT](LICENSE) © 2026 Vidit Arora
