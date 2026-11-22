@@ -107,7 +107,7 @@
         type="button"
         class="tool"
         aria-label="Attach images"
-        title="Attach images"
+        data-tip="Attach images"
         aria-describedby="image-note"
         disabled={session.attachments.length >= MAX_IMAGES || session.preparing}
         onclick={() => fileInput?.click()}
@@ -128,7 +128,7 @@
           type="button"
           class="tool"
           aria-label="Add a Wagon wheel"
-          title="Add a Wagon wheel: tap where each Shot went"
+          data-tip="Add a Wagon wheel: tap where each Shot went"
           disabled={session.busy || session.storeFailed}
           onclick={() => session.startWagonWheel()}
         >
@@ -140,7 +140,7 @@
           type="button"
           class={['tool', 'mic', voice.listening && 'on']}
           aria-label={voice.listening ? 'Stop voice input' : 'Start voice input'}
-          title={voice.listening ? 'Stop voice input' : 'Speak your question'}
+          data-tip={voice.listening ? 'Stop voice input' : 'Speak your question'}
           aria-pressed={voice.listening}
           onclick={toggleVoice}
         >

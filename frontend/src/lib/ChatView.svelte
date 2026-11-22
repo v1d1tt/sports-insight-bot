@@ -9,6 +9,7 @@
   import type { MessageImage } from './image-prep'
   import { renderMarkdown } from './markdown'
   import { duration } from './motion'
+  import { exampleQuestions } from './sport-focus'
   import SportFocusPicker from './SportFocusPicker.svelte'
   import WagonWheel from './WagonWheel.svelte'
 
@@ -18,11 +19,7 @@
   let log = $state<HTMLDivElement>()
 
   // Starting points for an empty Chat; a click puts one in the Message box to edit.
-  const SUGGESTIONS = [
-    'Set a field for a leg-spinner on a turning pitch',
-    'Who should bowl the 19th over when defending 12?',
-    'How do you build an innings on a slow pitch?',
-  ]
+  const suggestions = $derived(exampleQuestions(session.sportFocus.sport))
 
   // Keep the newest words in view while the reply streams, unless the
   // Visitor has scrolled up to read something older.
@@ -72,7 +69,7 @@
       <div class="opening">
         <p class="lead"><span>Ask about a match, a field or a player.</span></p>
         <ul class="suggestions" aria-label="Example questions">
-          {#each SUGGESTIONS as suggestion (suggestion)}
+          {#each suggestions as suggestion (suggestion)}
             <li>
               <button type="button" onclick={() => suggest(suggestion)}>{suggestion}</button>
             </li>
