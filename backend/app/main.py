@@ -9,8 +9,9 @@ from pydantic import BaseModel, Field
 
 from app.analyst import BoardState, ChatMessage, SportFocus, stream_reply
 from app.config import SettingsDep
+from app.events import AnalystEvent, BlockedEvent
 from app.injection_screen import InjectionScreen, OpenRouterScreen
-from app.input_guard import check_request, screen_request
+from app.input_guard import guard_request
 from app.model_provider import ModelProvider
 from app.openrouter import OpenRouterProvider
 
@@ -85,16 +86,17 @@ async def chat(
     provider: ModelProviderDep,
     screen: InjectionScreenDep,
 ) -> AsyncIterable[ServerSentEvent]:
-    refused = check_request(chat_request.messages) or await screen_request(
-        chat_request.messages, screen
-    )
+    refused = await guard_request(chat_request.messages, screen)
     if refused:
-        yield ServerSentEvent(
-            event=refused.type, data=refused.model_dump(exclude={"type"})
-        )
+        yield _sse(refused)
         return
     events = stream_reply(
         chat_request.messages, provider, chat_request.sport_focus, chat_request.board
     )
     async for event in events:
-        yield ServerSentEvent(event=event.type, data=event.model_dump(exclude={"type"}))
+        yield _sse(event)
+
+
+def _sse(event: AnalystEvent | BlockedEvent) -> ServerSentEvent:
+    """One server-sent event: the event's type is its name, the rest its data."""
+    return ServerSentEvent(event=event.type, data=event.model_dump(exclude={"type"}))

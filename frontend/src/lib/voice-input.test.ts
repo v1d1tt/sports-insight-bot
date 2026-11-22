@@ -81,3 +81,31 @@ test('a blocked microphone gives a clear message; a manual stop gives none', () 
   voice.stop()
   expect(voice.error).toBeNull()
 })
+
+test('the state is one of unsupported, idle, listening or failed', () => {
+  expect(new VoiceInput(undefined).state).toEqual({ status: 'unsupported' })
+  const voice = new VoiceInput(FakeRecognition)
+  expect(voice.state).toEqual({ status: 'idle' })
+  voice.start(() => {})
+  expect(voice.state).toEqual({ status: 'listening' })
+  FakeRecognition.last.onerror?.({ error: 'no-speech' })
+  FakeRecognition.last.onend?.()
+  expect(voice.state).toEqual({
+    status: 'failed',
+    message: 'No speech was heard. Press the mic and try again.',
+  })
+})
+
+test('cancel (on send) drops words that arrive late, so the sent Message does not come back', () => {
+  const voice = new VoiceInput(FakeRecognition)
+  const heard: string[] = []
+  voice.start((text) => heard.push(text))
+  const recognition = FakeRecognition.last
+  recognition.hear(['who bowls', false])
+
+  voice.cancel()
+  recognition.hear(['who bowls at the death', true]) // the browser's final result, after the send
+
+  expect(heard).toEqual(['who bowls'])
+  expect(voice.state).toEqual({ status: 'idle' })
+})

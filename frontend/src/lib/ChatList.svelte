@@ -136,7 +136,13 @@
         {/if}
       </li>
     {:else}
-      <li class="empty">No Chats yet.</li>
+      <li class="empty">
+        {session.chatList === 'loading'
+          ? 'Loading Chats…'
+          : session.chatList === 'failed'
+            ? 'This browser does not let the page save Chats.'
+            : 'No Chats yet.'}
+      </li>
     {/each}
   </ul>
 </nav>

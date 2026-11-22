@@ -29,7 +29,7 @@
   async function submit(event: SubmitEvent) {
     event.preventDefault()
     if (!canSend || session.busy) return
-    voice.stop()
+    voice.cancel() // late words must not refill the box after the send
     const message = text
     text = ''
     await session.send(message)

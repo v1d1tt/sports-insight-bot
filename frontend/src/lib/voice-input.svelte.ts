@@ -48,53 +48,88 @@ const ERROR_MESSAGES: Record<string, string> = {
   network: 'Voice input needs an internet connection in this browser.',
 }
 
+/**
+ * The voice input's states. Transitions:
+ * unsupported (no SpeechRecognition; final) ·
+ * idle → listening (start) · listening → idle (pause, stop, cancel) ·
+ * listening → failed (an error, then the end) · failed → listening (start again).
+ */
+export type VoiceState =
+  | { status: 'unsupported' }
+  | { status: 'idle' }
+  | { status: 'listening' }
+  | { status: 'failed'; message: string }
+
 export class VoiceInput {
-  readonly supported: boolean
-  listening = $state(false)
-  /** Why the last attempt failed, or null. */
-  error = $state<string | null>(null)
+  state = $state.raw<VoiceState>({ status: 'idle' })
 
   #Recognition: SpeechRecognitionCtor | undefined
   #recognition: SpeechRecognitionLike | null = null
 
   constructor(Recognition: SpeechRecognitionCtor | undefined = findSpeechRecognition()) {
     this.#Recognition = Recognition
-    this.supported = Recognition !== undefined
+    if (!Recognition) this.state = { status: 'unsupported' }
+  }
+
+  get supported() {
+    return this.state.status !== 'unsupported'
+  }
+
+  get listening() {
+    return this.state.status === 'listening'
+  }
+
+  /** Why the last attempt failed, or null. */
+  get error() {
+    return this.state.status === 'failed' ? this.state.message : null
   }
 
   /** Listen until the Visitor pauses. `onText` gets the whole transcript so far. */
   start(onText: (transcript: string) => void) {
     if (!this.#Recognition || this.listening) return
     const recognition = new this.#Recognition()
+    // Events from a recognition that was cancelled or has ended are ignored.
+    const current = () => this.#recognition === recognition
+    let failure: string | null = null
     recognition.lang = navigator.language || 'en-US'
     recognition.interimResults = true // show words while the Visitor speaks
     recognition.continuous = false // stop after a pause
     recognition.onresult = (event) => {
+      if (!current()) return
       let transcript = ''
       for (let i = 0; i < event.results.length; i++) transcript += event.results[i][0].transcript
       onText(transcript)
     }
     recognition.onerror = (event) => {
       if (event.error === 'aborted') return
-      this.error = ERROR_MESSAGES[event.error] ?? 'Voice input stopped. Press the mic to try again.'
+      failure = ERROR_MESSAGES[event.error] ?? 'Voice input stopped. Press the mic to try again.'
     }
     recognition.onend = () => {
-      this.listening = false
+      if (!current()) return
       this.#recognition = null
+      this.state = failure ? { status: 'failed', message: failure } : { status: 'idle' }
     }
-    this.error = null
     this.#recognition = recognition
-    this.listening = true
+    this.state = { status: 'listening' }
     try {
       recognition.start()
     } catch {
-      this.listening = false
       this.#recognition = null
-      this.error = 'Voice input could not start. Press the mic to try again.'
+      this.state = { status: 'failed', message: 'Voice input could not start. Press the mic to try again.' }
     }
   }
 
+  /** Stop listening; the words heard so far still arrive. */
   stop() {
     this.#recognition?.stop()
+  }
+
+  /** Stop listening and drop any words still on their way (the Message was sent). */
+  cancel() {
+    const recognition = this.#recognition
+    if (!recognition) return
+    this.#recognition = null
+    this.state = { status: 'idle' }
+    recognition.abort()
   }
 }
