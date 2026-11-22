@@ -1,11 +1,11 @@
 """The input guard: what a chat request must pass before the main model sees it.
 
-Two steps, both before any reply starts:
+One entry, `guard_request()`, runs two steps before any reply starts:
 
-1. `check_request()`: the limits. Message length, image count, image size and
+1. `_check_limits()`: the limits. Message length, image count, image size and
    type. The request body size is limited in `main.py` (`max_body_size`), and the
    history is trimmed to the last MAX_HISTORY Messages.
-2. `screen_request()`: the prompt-injection screen (defense layer 2), through an
+2. `_screen()`: the prompt-injection screen (defense layer 2), through an
    `InjectionScreen` adapter. To keep the cost low, it screens only the Messages
    that can carry an attack the cheap checks cannot see: Messages with images,
    long Messages, and Messages that mention instructions or rules.
@@ -85,7 +85,17 @@ BLOCKED = BlockedEvent(
 )
 
 
-def check_request(messages: Sequence[ChatMessage]) -> ErrorEvent | None:
+async def guard_request(
+    messages: Sequence[ChatMessage], screen: InjectionScreen
+) -> ErrorEvent | BlockedEvent | None:
+    """The Input guard: the event that refuses the request, or None to accept it.
+
+    Limits are checked first (free); the injection screen runs only when they pass.
+    """
+    return _check_limits(messages) or await _screen(messages, screen)
+
+
+def _check_limits(messages: Sequence[ChatMessage]) -> ErrorEvent | None:
     """Return an error event if the request breaks a limit, else None."""
     for message in messages:
         if message.role != "visitor":
@@ -103,7 +113,7 @@ def check_request(messages: Sequence[ChatMessage]) -> ErrorEvent | None:
     return None
 
 
-async def screen_request(
+async def _screen(
     messages: Sequence[ChatMessage], screen: InjectionScreen
 ) -> BlockedEvent | ErrorEvent | None:
     """Screen the Messages the model will see. Blocked, error, or None (accept).

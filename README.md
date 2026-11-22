@@ -2,7 +2,7 @@
 
 A cricket-first sports Analyst you chat with. You ask about a match, a tactic or a screenshot, and the Analyst explains it. For cricket it will also draw its answer on an interactive Ground (field placements and wagon wheels).
 
-**Status (Nov 2026): rebuild in progress.** The app is being rebuilt in 10 vertical slices. Slices 01 (walking skeleton), 02 (streaming chat), 03 (images and Sport focus), 04 (UI direction and voice input) and 05 (Field placement on the Board), 06 (interactive Board) and 07 (Wagon wheel) are done: you can chat with the Analyst by typing or speaking, show it up to 4 images per Message, pick the sport the Chat is about, and the reply streams in word by word as formatted text. Ask for a cricket field and the Analyst draws it on a Ground under its reply, checked against the Fielding restrictions. Then play with it: drag fielders (mouse, touch or keyboard), flip the Batter hand, change the Format and Phase, watch the live rule warnings, and ask the Analyst about your field. You can also record a batter's innings as a Wagon wheel (tap where each Shot went, pick the runs) and ask the Analyst to read it. Your Chats, with their images, are saved in your own browser.
+**Status (Nov 2026): rebuild in progress.** The app is being rebuilt in 10 vertical slices. Slices 01 (walking skeleton), 02 (streaming chat), 03 (images and Sport focus), 04 (UI direction and voice input) and 05 (Field placement on the Board), 06 (interactive Board), 07 (Wagon wheel), 08 (input guard) and 09 (quality pass: explicit state machines, architecture and review) are done: you can chat with the Analyst by typing or speaking, show it up to 4 images per Message, pick the sport the Chat is about, and the reply streams in word by word as formatted text. Ask for a cricket field and the Analyst draws it on a Ground under its reply, checked against the Fielding restrictions. Then play with it: drag fielders (mouse, touch or keyboard), flip the Batter hand, change the Format and Phase, watch the live rule warnings, and ask the Analyst about your field. You can also record a batter's innings as a Wagon wheel (tap where each Shot went, pick the runs) and ask the Analyst to read it. Your Chats, with their images, are saved in your own browser.
 
 **Live:** https://sports-insight-bot.vercel.app
 
@@ -43,6 +43,8 @@ The old version (vanilla HTML/JS and a FastAPI server, deployed from two other r
 | Limits | Each request sends only the last 20 Messages (the server trims again), and only the newest Message with images carries them. The server refuses a Visitor Message over 2,000 characters, more than 4 images in a Message, an image over 1 MB and an image that is not the type it claims (each a clear `error` event, before any model call), and a body over 4.5 MB (HTTP 413, like Vercel; the page shows "This Message is too large to send"). On HTTP 429 from the Vercel firewall the page says "Limit reached … try again after HH:MM". |
 | Security | Two layers against prompt injection (details: [docs/learning/08-input-guard.md](docs/learning/08-input-guard.md)). **Layer 1, structure (always):** text in images is labelled as untrusted data in the prompt and in the system rules; the Analyst has only the Board tools, and the server checks every tool call before anything reaches the page. **Layer 2, the screen:** before the main model call, `openai/gpt-oss-safeguard-20b` checks the input against a written policy ([backend/app/injection_policy.md](backend/app/injection_policy.md)). To keep the cost low it runs only for Messages with images (the main model first copies out the text in them, because the screen model reads text only), Visitor Messages over 400 characters, and Messages that use words such as "instructions", "system prompt" or "you are now". A flagged request gets a `blocked` event: the page shows a polite reason and an **Edit Message** button, and takes the blocked Message out of the Chat so a follow-up does not send it again. If the screen fails (timeout, provider error, odd answer), the request fails closed with a retryable `screen_unavailable` error. |
 | API | `POST /api/chat` takes `messages` (each `{role, text, images?}`, an image is `{media_type, data}` in base64) `sport_focus` (`{sport, team}`) and an optional `board` (`{field}`: the Field placement the Visitor asks about; checked like a tool call, 422 if badly shaped), and streams server-sent events: `text`, at most one `field_placement` (`{field}`: a checked Field placement), then `done` or `error` (`code`, `message`, `retryable`). A request the input guard refuses gets one `error` or one `blocked` (`{reason}`) event and nothing else. `GET /api/health` returns `{"status": "ok", "model": "<model ID>"}`. The model ID comes from `OPENROUTER_MODEL` (default `google/gemma-4-26b-a4b-it`). |
+| Robustness | Each flow is one explicit state machine with its transitions written above its type: the reply (`ReplyState`), the Chat list (loading, ready, failed), image prep, voice input (`VoiceState`), the Board drag and Wagon wheel Shot entry. A quick second Enter cannot send twice, a browser that cannot save a Chat ends in a clear message instead of a stuck "thinking" line, two quick pastes still keep the 4-image limit, and words heard after Send do not come back into the Message box. State diagrams: [docs/learning/09-quality-pass.md](docs/learning/09-quality-pass.md). |
+| Headers | Every response carries `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (no camera or location; microphone for this site only) and a CSP that forbids framing the site (`frame-ancestors 'none'`). Set in `vercel.json`. |
 | CI | Every push and pull request runs ruff, pytest, svelte-check, Vitest and Playwright. `main` only accepts pull requests with a green check. |
 
 ## Stack
@@ -86,7 +88,7 @@ frontend/                 Svelte 5 + Vite + TypeScript page (static build)
   src/lib/motion.ts              transition lengths (0 under reduced motion), the rule-drawing transition
   src/lib/SportFocusPicker.svelte  Sport and team for the open Chat
   src/lib/ChatList.svelte        Chat list: new, open, rename, delete
-  src/lib/chat-session.svelte.ts page state; joins the Chat store, Image prep and the stream client
+  src/lib/chat-session.svelte.ts page state (reply, Chat list and image prep state machines); joins the Chat store, Image prep and the stream client
   src/lib/chat-store.ts          Chats (with Sport focus) and Messages (with images, fields and Wagon wheels) in IndexedDB (idb)
   src/lib/chat-stream.ts         POST /api/chat and read the server-sent events
   src/lib/image-prep.ts          Image prep: check type and count, resize to 1600 px, base64
@@ -98,7 +100,7 @@ backend/                  FastAPI API, served under /api
   app/analyst.py          the Analyst: prompt, Sport focus, images, Board state, 20-Message history, the field tool loop (one repair), error messages
   app/wagon_wheel.py      the Wagon wheel: Shot checks, areas, totals by area for the prompt
   app/fielding/           Fielding restrictions: restrictions.json (the shared data) and the Python check + tool schema
-  app/input_guard.py      the input guard: limits (2,000 characters, 4 images, 1 MB, real types) and which Messages go to the screen
+  app/input_guard.py      the input guard, one entry guard_request(): limits (2,000 characters, 4 images, 1 MB, real types) and which Messages go to the screen
   app/injection_screen.py the injection screen adapter: reads image text, asks gpt-oss-safeguard-20b
   app/injection_policy.md the written prompt-injection policy the screen model reads
   app/openrouter.py       the OpenRouter adapter (streamed chat completions and tool calls)
@@ -106,7 +108,7 @@ backend/                  FastAPI API, served under /api
   app/events.py           the server-sent events: text, field_placement, error, blocked, done
   app/config.py           settings from environment variables
   tests/                  pytest tests (fake model provider, no network); fielding_cases.json is the shared case table
-vercel.json               Vercel Services: /api/* goes to backend, all else to frontend
+vercel.json               Vercel Services: /api/* goes to backend, all else to frontend; security headers
 .github/workflows/ci.yml  CI: lint and tests on every push and pull request
 docs/                     PRD, ADRs, model test, learning notes
 ```

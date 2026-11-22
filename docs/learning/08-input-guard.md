@@ -12,8 +12,8 @@ Ticket: #9. Branch: `slice/08-input-guard`.
 ## How the code flows
 
 1. `chat()` in `backend/app/main.py` gets the checked `ChatRequest`, the model provider and the injection screen (`get_injection_screen()` builds an `OpenRouterScreen` around the shared HTTP client).
-2. `check_request()` in `backend/app/input_guard.py` checks the limits. If one is broken, the route sends that `error` event and stops.
-3. `screen_request()` takes the last 20 Messages (the ones the model will see) and picks what to screen:
+2. `check_request()` (named `_check_limits()` since slice 09) in `backend/app/input_guard.py` checks the limits. If one is broken, the route sends that `error` event and stops.
+3. `screen_request()` (named `_screen()` since slice 09) takes the last 20 Messages (the ones the model will see) and picks what to screen:
    - every image of a Visitor Message,
    - a Visitor Message over 400 characters,
    - any Message (also a forged Analyst reply in the history) that matches `SUSPICIOUS`: words like "instruction", "system prompt", "disregard", "you are now", "act as", "SYSTEM:".

@@ -5,7 +5,14 @@ import { type MessageImage, prepareImages } from './image-prep'
 import { DEFAULT_SPORT_FOCUS, type SportFocus } from './sport-focus'
 import { EMPTY_WAGON_WHEEL, type WagonWheel } from './wagon-wheel'
 
-/** What the Analyst's reply to the last Message is doing. */
+/**
+ * What the Analyst's reply to the last Message is doing. Transitions:
+ * idle → thinking (send, retry) · thinking → streaming (first text or Field placement) ·
+ * thinking | streaming → idle (done, Stop) | failed | blocked | rate-limited ·
+ * failed → thinking (Retry, when retryable) · blocked → idle (Edit Message) ·
+ * any → idle (new Chat, open another Chat).
+ * `busy` (thinking or streaming) is the only state that refuses a new send.
+ */
 export type ReplyState =
   | { status: 'idle' }
   | { status: 'thinking' } // sent, no words yet
@@ -16,12 +23,32 @@ export type ReplyState =
 
 const IDLE: ReplyState = { status: 'idle' }
 
+/**
+ * The Chat list's states: loading → ready, or loading → failed when the
+ * browser does not let the page use IndexedDB (then no Chat can start).
+ */
+export type ChatListState = 'loading' | 'ready' | 'failed'
+
+const SAVE_FAILED: ReplyState = {
+  status: 'failed',
+  message: 'This browser could not save the Chat, so the Message was not sent.',
+  retryable: false,
+}
+
 /** The Visitor's Message when they press "Ask the Analyst about this field". */
 export const ASK_ABOUT_FIELD = 'What do you think of this field as it stands now?'
 
 /** The Visitor's Message when they press "Ask the Analyst about this Wagon wheel". */
 export const ASK_ABOUT_WHEEL = 'What does this Wagon wheel say about the batter?'
 
+
+/** The Board a Visitor Message asks about (its field or Wagon wheel), if any. */
+export function boardOf(message: StoredMessage): BoardState | undefined {
+  if (message.role !== 'visitor') return undefined
+  if (message.field) return { field: message.field }
+  if (message.wheel) return { wheel: message.wheel }
+  return undefined
+}
 
 /** An image attached to the Message being written; the id keys the preview. */
 export type Attachment = { id: string; image: MessageImage }
@@ -39,8 +66,9 @@ export class ChatSession {
   /** The Field placement of the reply that is streaming, if it has one yet. */
   draftField = $state.raw<FieldPlacement | null>(null)
   reply = $state.raw<ReplyState>(IDLE)
+  chatList = $state<ChatListState>('loading')
   /** True when the browser does not let the page save Chats. */
-  storeFailed = $state(false)
+  storeFailed = $derived(this.chatList === 'failed')
   /** The open Chat's Sport focus (for a new Chat: what it will be saved with). */
   sportFocus = $state.raw<SportFocus>(DEFAULT_SPORT_FOCUS)
   /** Images attached to the Message being written, already resized. */
@@ -53,17 +81,24 @@ export class ChatSession {
   busy = $derived(this.reply.status === 'thinking' || this.reply.status === 'streaming')
 
   #store: Promise<ChatStore>
+  #resize: ((file: File) => Promise<MessageImage>) | undefined
   #stop: AbortController | null = null
+  /** The attach in progress: the next one waits for it, so the image count stays right. */
+  #attaching: Promise<void> = Promise.resolve()
+  #pendingAttaches = 0
 
-  constructor(store: Promise<ChatStore> = openChatStore()) {
+  /** `resize` replaces the browser's canvas resize in tests. */
+  constructor(store: Promise<ChatStore> = openChatStore(), resize?: (file: File) => Promise<MessageImage>) {
     this.#store = store
+    this.#resize = resize
   }
 
   async load() {
     try {
       this.chats = await (await this.#store).listChats()
+      this.chatList = 'ready'
     } catch {
-      this.storeFailed = true
+      this.chatList = 'failed'
     }
   }
 
@@ -96,14 +131,20 @@ export class ChatSession {
   }
 
   /** Check, resize and attach images the Visitor picked, pasted or dropped. */
-  async attach(files: File[]) {
-    if (files.length === 0) return
+  attach(files: File[]): Promise<void> {
+    if (files.length === 0) return Promise.resolve()
+    this.#pendingAttaches++
     this.preparing = true
-    const { images, error } = await prepareImages(files, this.attachments.length)
-    const added = images.map((image) => ({ id: crypto.randomUUID(), image }))
-    this.attachments = [...this.attachments, ...added]
-    this.attachError = error
-    this.preparing = false
+    // Two quick pastes run one after the other, so the second sees the first's images.
+    this.#attaching = this.#attaching.then(async () => {
+      const { images, error } = await prepareImages(files, this.attachments.length, this.#resize)
+      const added = images.map((image) => ({ id: crypto.randomUUID(), image }))
+      this.attachments = [...this.attachments, ...added]
+      this.attachError = error
+      this.#pendingAttaches--
+      this.preparing = this.#pendingAttaches > 0
+    })
+    return this.#attaching
   }
 
   removeAttachment(id: string) {
@@ -152,16 +193,23 @@ export class ChatSession {
     const message = text.trim()
     const images = this.attachments.map((attachment) => attachment.image)
     if ((!message && images.length === 0) || this.busy || this.preparing) return
-    const store = await this.#store
+    // Busy from the first moment, so a second press of Enter while saving does nothing.
+    this.reply = { status: 'thinking' }
     let chatId = this.currentChatId
-    if (!chatId) {
-      chatId = (await store.createChat(this.sportFocus)).id
-      this.currentChatId = chatId
+    try {
+      const store = await this.#store
+      if (!chatId) {
+        chatId = (await store.createChat(this.sportFocus)).id
+        this.currentChatId = chatId
+      }
+      this.#clearDraftMessage()
+      await store.addMessage(chatId, 'visitor', message, { images, ...board })
+      this.messages = await store.getMessages(chatId)
+      this.chats = await store.listChats()
+    } catch {
+      if (this.currentChatId === chatId) this.reply = SAVE_FAILED
+      return
     }
-    this.#clearDraftMessage()
-    await store.addMessage(chatId, 'visitor', message, { images, ...board })
-    this.messages = await store.getMessages(chatId)
-    this.chats = await store.listChats()
     await this.#reply(chatId)
   }
 
@@ -213,14 +261,7 @@ export class ChatSession {
     const history = sent.map(({ role, text, images }) => ({ role, text, images }))
     // A question about the Board carries the field or Wagon wheel as it stood when asked (also on retry).
     const last = sent.at(-1)
-    const board =
-      last?.role !== 'visitor'
-        ? undefined
-        : last.field
-          ? { field: last.field }
-          : last.wheel
-            ? { wheel: last.wheel }
-            : undefined
+    const board = last && boardOf(last)
     const result = await streamReply(history, {
       board,
       signal: stop.signal,
@@ -242,17 +283,25 @@ export class ChatSession {
     })
     if (this.#stop === stop) this.#stop = null
 
-    // Save what the Visitor saw: the whole reply, or the part before Stop.
-    if ((result.status === 'done' || result.status === 'stopped') && (text || field)) {
-      await store.addMessage(chatId, 'analyst', text, { field })
-      this.chats = await store.listChats()
-      if (isOpen()) this.messages = await store.getMessages(chatId)
-    }
-    if (result.status === 'blocked' && last?.role === 'visitor') {
-      // Take the blocked Message out of the Chat, so a follow-up does not send it again.
-      await store.deleteMessage(last.id)
-      this.chats = await store.listChats()
-      if (isOpen()) this.messages = await store.getMessages(chatId)
+    try {
+      // Save what the Visitor saw: the whole reply, or the part before Stop.
+      if ((result.status === 'done' || result.status === 'stopped') && (text || field)) {
+        await store.addMessage(chatId, 'analyst', text, { field })
+        this.chats = await store.listChats()
+        if (isOpen()) this.messages = await store.getMessages(chatId)
+      }
+      if (result.status === 'blocked' && last?.role === 'visitor') {
+        // Take the blocked Message out of the Chat, so a follow-up does not send it again.
+        await store.deleteMessage(last.id)
+        this.chats = await store.listChats()
+        if (isOpen()) this.messages = await store.getMessages(chatId)
+      }
+    } catch {
+      // The reply stays on screen as the draft; say it was not kept.
+      if (isOpen()) {
+        this.reply = { status: 'failed', message: 'This browser could not save the reply.', retryable: false }
+      }
+      return
     }
     if (!isOpen()) return // the Visitor moved to another Chat
 
