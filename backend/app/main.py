@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 
 from app.analyst import BoardState, ChatMessage, SportFocus, stream_reply
 from app.config import SettingsDep
-from app.input_guard import check_request
+from app.injection_screen import InjectionScreen, OpenRouterScreen
+from app.input_guard import check_request, screen_request
 from app.model_provider import ModelProvider
 from app.openrouter import OpenRouterProvider
 
@@ -63,15 +64,31 @@ def get_model_provider(request: Request, settings: SettingsDep) -> ModelProvider
 ModelProviderDep = Annotated[ModelProvider, Depends(get_model_provider)]
 
 
+def get_injection_screen(request: Request, settings: SettingsDep) -> InjectionScreen:
+    return OpenRouterScreen(
+        client=request.app.state.http_client,
+        api_key=settings.openrouter_api_key,
+        reader_model=settings.openrouter_model,
+    )
+
+
+InjectionScreenDep = Annotated[InjectionScreen, Depends(get_injection_screen)]
+
+
 @app.post(
     "/api/chat",
     response_class=EventSourceResponse,
     max_body_size=MAX_CHAT_BODY_BYTES,
 )
 async def chat(
-    chat_request: ChatRequest, provider: ModelProviderDep
+    chat_request: ChatRequest,
+    provider: ModelProviderDep,
+    screen: InjectionScreenDep,
 ) -> AsyncIterable[ServerSentEvent]:
-    if refused := check_request(chat_request.messages):
+    refused = check_request(chat_request.messages) or await screen_request(
+        chat_request.messages, screen
+    )
+    if refused:
         yield ServerSentEvent(
             event=refused.type, data=refused.model_dump(exclude={"type"})
         )

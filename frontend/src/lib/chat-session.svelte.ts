@@ -11,6 +11,7 @@ export type ReplyState =
   | { status: 'thinking' } // sent, no words yet
   | { status: 'streaming' }
   | { status: 'failed'; message: string; retryable: boolean }
+  | { status: 'blocked'; reason: string; text: string } // `text`: the blocked Message, for Edit
   | { status: 'rate-limited'; retryAt: Date }
 
 const IDLE: ReplyState = { status: 'idle' }
@@ -169,6 +170,13 @@ export class ChatSession {
     if (this.currentChatId && !this.busy) await this.#reply(this.currentChatId)
   }
 
+  /** "Edit Message" after a block: close the notice and give back the blocked text. */
+  editBlocked(): string {
+    const text = this.reply.status === 'blocked' ? this.reply.text : ''
+    this.#clearReply()
+    return text
+  }
+
   /** Stop the reply. The text so far stays and is saved. */
   stop() {
     this.#stop?.abort()
@@ -240,10 +248,18 @@ export class ChatSession {
       this.chats = await store.listChats()
       if (isOpen()) this.messages = await store.getMessages(chatId)
     }
+    if (result.status === 'blocked' && last?.role === 'visitor') {
+      // Take the blocked Message out of the Chat, so a follow-up does not send it again.
+      await store.deleteMessage(last.id)
+      this.chats = await store.listChats()
+      if (isOpen()) this.messages = await store.getMessages(chatId)
+    }
     if (!isOpen()) return // the Visitor moved to another Chat
 
     if (result.status === 'failed') {
       this.reply = { status: 'failed', message: result.message, retryable: result.retryable }
+    } else if (result.status === 'blocked') {
+      this.reply = { status: 'blocked', reason: result.reason, text: last?.text ?? '' }
     } else if (result.status === 'rate-limited') {
       this.reply = { status: 'rate-limited', retryAt: result.retryAt }
     } else {

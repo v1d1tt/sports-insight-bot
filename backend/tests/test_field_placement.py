@@ -152,3 +152,14 @@ def test_a_reply_with_only_text_makes_one_model_call(send):
     send(provider)
 
     assert len(provider.calls) == 1
+
+
+def test_a_call_to_any_other_tool_is_ignored(send):
+    # An injection might talk the model into a tool it was never offered.
+    other = ToolCall(id="call_1", name="send_email", arguments=json.dumps(LEGAL))
+    provider = FakeProvider(turns=[["Here is my plan. ", other]])
+
+    events = send(provider)
+
+    assert events == [("text", {"text": "Here is my plan. "}), ("done", {})]
+    assert len(provider.calls) == 1

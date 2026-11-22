@@ -113,9 +113,9 @@ class VisitorMessage(BaseModel):
     """A Message from the Visitor: text, images, or both."""
 
     role: Literal["visitor"]
-    text: Annotated[str, Field(max_length=2000)]
-    # The count limit (4) is checked by the input guard, which answers with a
-    # clear error event instead of a 422.
+    # The length limit (2,000 characters) and the image limits are checked by
+    # the input guard, which answers with a clear error event instead of a 422.
+    text: str
     images: list[ImageAttachment] = []
 
     @model_validator(mode="after")
@@ -339,8 +339,14 @@ async def stream_reply(
             ) as pieces:
                 async for piece in pieces:
                     if isinstance(piece, ToolCall):
-                        # Only the first call counts; with "none", none do.
-                        if tools and tool_choice == "auto" and call is None:
+                        # Only the first call counts; with "none", none do. A call
+                        # to a tool that was not offered is ignored.
+                        offered = [tool["function"]["name"] for tool in tools or []]
+                        if (
+                            piece.name in offered
+                            and tool_choice == "auto"
+                            and call is None
+                        ):
                             call = piece
                         continue
                     text += piece

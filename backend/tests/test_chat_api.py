@@ -138,17 +138,6 @@ def test_only_the_last_20_messages_reach_the_model(chat: Chat):
     assert history[-1] == {"role": "user", "content": "Question 25"}
 
 
-def test_a_message_over_2000_characters_is_refused_before_any_model_call(
-    chat: Chat,
-):
-    provider = FakeProvider(pieces=["never sent"])
-
-    response = chat(provider, [visitor("x" * 2001)])
-
-    assert response.status_code == 422
-    assert provider.received == []
-
-
 def test_an_empty_reply_is_a_retryable_error(chat: Chat):
     provider = FakeProvider(pieces=[])
 

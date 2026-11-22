@@ -169,6 +169,12 @@
         </button>
       {/if}
     </div>
+  {:else if session.reply.status === 'blocked'}
+    <div class="notice" role="alert" in:fly={{ y: 6, duration: duration(200) }}>
+      <IconAlertTriangle size={20} stroke={1.75} aria-hidden="true" />
+      <p>{session.reply.reason}</p>
+      <button type="button" class="btn" onclick={() => (text = session.editBlocked())}>Edit Message</button>
+    </div>
   {:else if session.reply.status === 'rate-limited'}
     <div class="notice" role="alert" in:fly={{ y: 6, duration: duration(200) }}>
       <IconAlertTriangle size={20} stroke={1.75} aria-hidden="true" />
