@@ -118,7 +118,7 @@
               type="button"
               class="icon"
               aria-label={`Rename ${chat.title}`}
-              title="Rename"
+              data-tip="Rename"
               onclick={() => startRename(chat)}
             >
               <IconPencil size={16} stroke={1.75} aria-hidden="true" />
@@ -127,7 +127,7 @@
               type="button"
               class="icon danger"
               aria-label={`Delete ${chat.title}`}
-              title="Delete"
+              data-tip="Delete"
               onclick={() => remove(chat)}
             >
               <IconTrash size={16} stroke={1.75} aria-hidden="true" />
