@@ -10,6 +10,7 @@
   import { renderMarkdown } from './markdown'
   import { duration } from './motion'
   import SportFocusPicker from './SportFocusPicker.svelte'
+  import WagonWheel from './WagonWheel.svelte'
 
   let { session, inert = false }: { session: ChatSession; inert?: boolean } = $props()
 
@@ -114,6 +115,13 @@
             {/if}
             {#if message.text}
               <p class="plain">{message.text}</p>
+            {:else if message.wheel}
+              <WagonWheel
+                wheel={message.wheel}
+                onchange={(wheel) => session.editWheel(message.id, wheel)}
+                onask={(wheel) => session.askAboutWheel(wheel)}
+                askDisabled={session.busy}
+              />
             {/if}
           {/if}
         </div>

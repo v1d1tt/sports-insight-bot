@@ -1,8 +1,9 @@
 <script lang="ts">
   import { IconMessageQuestion } from '@tabler/icons-svelte-runes'
   import type { Attachment } from 'svelte/attachments'
-  import { describeField, type FieldPlacement, type Format, GROUND, type Phase, placeLabels } from './field-placement'
+  import { describeField, type FieldPlacement, type Format, type Phase, placeLabels } from './field-placement'
   import { checkRestrictions, counts, isOutsideCircle, mirror, moveFielder, outsideLimit } from './fielding'
+  import Ground, { GROUND_VIEWBOX, groundPoint } from './Ground.svelte'
 
   let {
     field,
@@ -38,9 +39,6 @@
   /** Said by screen readers after a move. */
   let announcement = $state('')
 
-  // The picture shows the wicketkeeper at the top, so picture y = -y.
-  const pitchTop = -GROUND.strikerY - 0.04
-  const pitchHeight = GROUND.strikerY - GROUND.bowlerY + 0.08
   const KEY_STEP = 0.03
   const KEY_STEP_LARGE = 0.1
 
@@ -54,14 +52,6 @@
     const where = isOutsideCircle(fielder) ? 'outside' : 'inside'
     const name = fielder.position === from ? from : `${from} is now ${fielder.position}`
     announcement = `${name}, ${where} the 30-yard circle.`
-  }
-
-  /** A pointer's place on the Ground, in Ground units (y grows towards the wicketkeeper). */
-  function groundPoint(svg: SVGSVGElement, event: PointerEvent) {
-    const matrix = svg.getScreenCTM()
-    if (!matrix) return null
-    const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse())
-    return { x: point.x, y: -point.y }
   }
 
   let dragStart = ''
@@ -173,18 +163,13 @@
   {/if}
 
   <svg
-    viewBox="-1.32 -1.12 2.64 2.24"
+    viewBox={GROUND_VIEWBOX}
     role="group"
     aria-label="Ground with {current.fielders.length} fielders: {summary}"
     class={{ gliding, editable }}
     {@attach holdPageStill}
   >
-    <circle class="boundary" r="1" />
-    <circle class="ring" r={GROUND.circleRadius} />
-    <rect class="pitch" x="-0.03" y={pitchTop} width="0.06" height={pitchHeight} />
-
-    <text class="side" x="-1.28" y="1.07" text-anchor="start">{offOnLeft ? 'Off side' : 'Leg side'}</text>
-    <text class="side" x="1.28" y="1.07" text-anchor="end">{offOnLeft ? 'Leg side' : 'Off side'}</text>
+    <Ground {offOnLeft} />
 
     <!-- Keyed by index: a dragged fielder keeps its element while its name changes. -->
     {#each labels as label (label.index)}
@@ -359,35 +344,6 @@
     font-family: var(--font-body);
     user-select: none;
     -webkit-user-select: none;
-  }
-
-  .boundary {
-    fill: var(--paper);
-    stroke: var(--rule-strong);
-    stroke-width: 0.008;
-  }
-
-  .ring {
-    fill: none;
-    stroke: var(--print);
-    stroke-width: 0.006;
-    stroke-dasharray: 0.03 0.025;
-    opacity: 0.7;
-  }
-
-  .pitch {
-    fill: var(--rule);
-    stroke: var(--rule-strong);
-    stroke-width: 0.004;
-  }
-
-  .side {
-    fill: var(--print);
-    font-family: var(--font-display);
-    font-size: 0.065px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
   }
 
   .fielder {
