@@ -13,8 +13,6 @@ https://github.com/user-attachments/assets/0b3a5d2e-7419-4292-b122-44966708a0a2
 
 Everything in this demo video is the live production site, recorded with Playwright; the only change is speed.
 
-[![Demo video (25 s): streaming chat, a scorecard image, a Field placement with a drag and a rule warning, a Wagon wheel, phone width](docs/demo/sports-insight-bot-demo.jpg)](docs/demo/sports-insight-bot-demo.mp4)
-
 | Drag a fielder: the rule check is live | Tap in a Wagon wheel | Phone width |
 |---|---|---|
 | <img src="docs/screenshots/board-interactive.png" alt="The interactive Board: point dragged out to deep point, with the warning that a T20 powerplay allows at most 2 fielders outside the 30-yard circle" width="300"> | <img src="docs/screenshots/wagon-wheel.png" alt="A Wagon wheel at phone width: 19 runs off 7 Shots, strongest through cover, with run totals by area" width="230"> | <img src="docs/screenshots/phone.png" alt="The app at phone width" width="200"> |
