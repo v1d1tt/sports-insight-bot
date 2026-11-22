@@ -35,6 +35,7 @@ from app.model_provider import (
     Tool,
     ToolCall,
 )
+from app.wagon_wheel import WagonWheel, wheel_text
 
 logger = logging.getLogger(__name__)
 
@@ -138,9 +139,17 @@ ChatMessage = Annotated[VisitorMessage | AnalystMessage, Field(discriminator="ro
 
 
 class BoardState(BaseModel):
-    """What the Visitor's Board shows when they ask the Analyst about it."""
+    """What the Visitor's Board shows when they ask the Analyst about it:
+    a Field placement or a Wagon wheel (exactly one)."""
 
-    field: FieldPlacement
+    field: FieldPlacement | None = None
+    wheel: WagonWheel | None = None
+
+    @model_validator(mode="after")
+    def one_drawing(self) -> "BoardState":
+        if (self.field is None) == (self.wheel is None):
+            raise ValueError("Board state needs a field or a wheel, not both")
+        return self
 
 
 PHASE_NAMES = {
@@ -156,7 +165,10 @@ def board_text(board: BoardState) -> str:
     The rules part comes last, right before the model answers: a broken
     Fielding restriction must open the reply, and no suggestion may break one.
     """
+    if board.wheel is not None:
+        return wheel_text(board.wheel)
     field = board.field
+    assert field is not None  # one_drawing() checked it
     phase = "" if field.format == "Test" else f" {PHASE_NAMES[field.phase]}"
     fielders = "; ".join(f"{f.position} ({f.x:g}, {f.y:g})" for f in field.fielders)
     broken = [violation.message for violation in check_restrictions(field)]

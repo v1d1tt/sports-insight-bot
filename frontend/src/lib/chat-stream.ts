@@ -2,6 +2,10 @@ import { EventSourceParserStream } from 'eventsource-parser/stream'
 import type { FieldPlacement } from './field-placement'
 import type { MessageImage } from './image-prep'
 import { DEFAULT_SPORT_FOCUS, type SportFocus } from './sport-focus'
+import type { WagonWheel } from './wagon-wheel'
+
+/** What a question about the Board carries: the field or the Wagon wheel as it stood. */
+export type BoardState = { field: FieldPlacement } | { wheel: WagonWheel }
 
 /** One Message of the Chat's history. */
 export type ChatMessage = { role: 'visitor' | 'analyst'; text: string; images?: MessageImage[] }
@@ -26,7 +30,7 @@ export type StreamOptions = {
   /** The Chat's Sport focus; cricket when not given. */
   sportFocus?: SportFocus
   /** The Board as it now stands, sent with "Ask the Analyst about this field". */
-  board?: { field: FieldPlacement }
+  board?: BoardState
 }
 
 // The Vercel firewall blocks an IP for 1 hour after it passes the chat limit

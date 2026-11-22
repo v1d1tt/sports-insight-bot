@@ -1,4 +1,5 @@
 <script lang="ts">
+  import IconAperture from '@tabler/icons-svelte-runes/icons/aperture'
   import IconArrowUp from '@tabler/icons-svelte-runes/icons/arrow-up'
   import IconMicrophone from '@tabler/icons-svelte-runes/icons/microphone'
   import IconPhoto from '@tabler/icons-svelte-runes/icons/photo'
@@ -121,6 +122,19 @@
         bind:this={fileInput}
         onchange={pickFiles}
       />
+      {#if session.sportFocus.sport === 'cricket'}
+        <!-- The Wagon wheel is cricket's: it records where a batter's Shots went. -->
+        <button
+          type="button"
+          class="tool"
+          aria-label="Add a Wagon wheel"
+          title="Add a Wagon wheel: tap where each Shot went"
+          disabled={session.busy || session.storeFailed}
+          onclick={() => session.startWagonWheel()}
+        >
+          <IconAperture size={20} stroke={1.75} aria-hidden="true" />
+        </button>
+      {/if}
       {#if voice.supported}
         <button
           type="button"

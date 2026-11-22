@@ -1,8 +1,9 @@
 import { type Chat, type ChatStore, openChatStore, type StoredMessage, sportFocusOf } from './chat-store'
-import { streamReply } from './chat-stream'
+import { type BoardState, streamReply } from './chat-stream'
 import type { FieldPlacement } from './field-placement'
 import { type MessageImage, prepareImages } from './image-prep'
 import { DEFAULT_SPORT_FOCUS, type SportFocus } from './sport-focus'
+import { EMPTY_WAGON_WHEEL, type WagonWheel } from './wagon-wheel'
 
 /** What the Analyst's reply to the last Message is doing. */
 export type ReplyState =
@@ -16,6 +17,9 @@ const IDLE: ReplyState = { status: 'idle' }
 
 /** The Visitor's Message when they press "Ask the Analyst about this field". */
 export const ASK_ABOUT_FIELD = 'What do you think of this field as it stands now?'
+
+/** The Visitor's Message when they press "Ask the Analyst about this Wagon wheel". */
+export const ASK_ABOUT_WHEEL = 'What does this Wagon wheel say about the batter?'
 
 
 /** An image attached to the Message being written; the id keys the preview. */
@@ -114,10 +118,36 @@ export class ChatSession {
 
   /** "Ask the Analyst about this field": send the Board as it now stands with a question. */
   async askAboutField(field: FieldPlacement) {
-    await this.send(ASK_ABOUT_FIELD, field)
+    await this.send(ASK_ABOUT_FIELD, { field })
   }
 
-  async send(text: string, board?: FieldPlacement) {
+  /** Start an empty Wagon wheel at the end of the Chat (a new Chat is saved for it). */
+  async startWagonWheel() {
+    if (this.busy) return
+    const store = await this.#store
+    let chatId = this.currentChatId
+    if (!chatId) {
+      chatId = (await store.createChat(this.sportFocus)).id
+      this.currentChatId = chatId
+    }
+    this.#clearReply()
+    await store.addMessage(chatId, 'visitor', '', { wheel: EMPTY_WAGON_WHEEL })
+    this.messages = await store.getMessages(chatId)
+    this.chats = await store.listChats()
+  }
+
+  /** Save the Visitor's change to a Wagon wheel. */
+  async editWheel(messageId: number, wheel: WagonWheel) {
+    this.messages = this.messages.map((m) => (m.id === messageId ? { ...m, wheel } : m))
+    await (await this.#store).setWheel(messageId, wheel)
+  }
+
+  /** "Ask the Analyst about this Wagon wheel": send its Shots with a question. */
+  async askAboutWheel(wheel: WagonWheel) {
+    await this.send(ASK_ABOUT_WHEEL, { wheel })
+  }
+
+  async send(text: string, board?: BoardState) {
     const message = text.trim()
     const images = this.attachments.map((attachment) => attachment.image)
     if ((!message && images.length === 0) || this.busy || this.preparing) return
@@ -128,7 +158,7 @@ export class ChatSession {
       this.currentChatId = chatId
     }
     this.#clearDraftMessage()
-    await store.addMessage(chatId, 'visitor', message, { images, field: board })
+    await store.addMessage(chatId, 'visitor', message, { images, ...board })
     this.messages = await store.getMessages(chatId)
     this.chats = await store.listChats()
     await this.#reply(chatId)
@@ -170,10 +200,19 @@ export class ChatSession {
 
     let text = ''
     let field: FieldPlacement | undefined
-    const history = this.messages.map(({ role, text, images }) => ({ role, text, images }))
-    // A question about the Board carries the field as it stood when asked (also on retry).
-    const last = this.messages.at(-1)
-    const board = last?.role === 'visitor' && last.field ? { field: last.field } : undefined
+    // A Wagon wheel the Visitor records has no text: it is Board state, not a Message.
+    const sent = this.messages.filter((m) => m.text || m.images?.length)
+    const history = sent.map(({ role, text, images }) => ({ role, text, images }))
+    // A question about the Board carries the field or Wagon wheel as it stood when asked (also on retry).
+    const last = sent.at(-1)
+    const board =
+      last?.role !== 'visitor'
+        ? undefined
+        : last.field
+          ? { field: last.field }
+          : last.wheel
+            ? { wheel: last.wheel }
+            : undefined
     const result = await streamReply(history, {
       board,
       signal: stop.signal,
