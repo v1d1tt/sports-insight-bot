@@ -8,6 +8,10 @@
 
 ## Demo
 
+
+https://github.com/user-attachments/assets/0b3a5d2e-7419-4292-b122-44966708a0a2
+
+
 [![Demo video (25 s): streaming chat, a scorecard image, a Field placement with a drag and a rule warning, a Wagon wheel, phone width](docs/demo/sports-insight-bot-demo.jpg)](docs/demo/sports-insight-bot-demo.mp4)
 
 Click the picture to play the 25-second demo ([MP4, 3.5 MB](docs/demo/sports-insight-bot-demo.mp4)). Everything in it is the live production site, recorded with Playwright; the only change is speed.
